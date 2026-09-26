@@ -4,7 +4,8 @@ import { useProfile } from '@/state/profile';
 import { colors } from '@/theme';
 
 export default function TabsLayout() {
-  const { draft } = useProfile();
+  const { ready, draft } = useProfile();
+  if (!ready) return null;
   if (!draft.disclaimerAcceptedAt) return <Redirect href="/onboarding" />;
 
   return (

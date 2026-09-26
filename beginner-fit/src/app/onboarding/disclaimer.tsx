@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Body, Button, Screen, Title, s } from '@/components/ui';
-import { saveProfile } from '@/lib/supabase';
+import { generatePlan, saveProfile } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
 import { colors, fonts } from '@/theme';
 import { isHighRisk } from '@/utils/screening';
 
 export default function Disclaimer() {
-  const { draft, update } = useProfile();
+  const { draft, update, setPlan } = useProfile();
   const [agreed, setAgreed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,11 +22,11 @@ export default function Disclaimer() {
     setSaving(true);
     setError(null);
     try {
-      await saveProfile(accepted);
+      if (await saveProfile(accepted)) await setPlan(await generatePlan());
       update({ disclaimerAcceptedAt: accepted.disclaimerAcceptedAt });
       router.replace('/today');
     } catch {
-      setError("Couldn't save your answers. Check your internet connection and try again.");
+      setError("Couldn't build your plan. Check your internet connection and try again.");
     } finally {
       setSaving(false);
     }
@@ -41,7 +41,7 @@ export default function Disclaimer() {
               {error}
             </Text>
           ) : null}
-          <Button label={saving ? 'Saving…' : error ? 'Try again' : 'Build my plan'} disabled={!agreed || saving} onPress={build} />
+          <Button label={saving ? 'Building your plan…' : error ? 'Try again' : 'Build my plan'} disabled={!agreed || saving} onPress={build} />
         </>
       }
     >

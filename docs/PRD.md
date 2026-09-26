@@ -58,8 +58,8 @@ We'll know we're right when **novices can get from install to a usable plan with
 | # | Milestone | Outcome | Status | Plan |
 |---|---|---|---|---|
 | 1 | Validate problem | 5–10 novice interviews confirm the navigation/knowledge barrier | pending | — |
-| 2 | AI onboarding questions | A novice answers plain-language questions, including injury and illness history, without confusion | pending | — |
-| 3 | Plan generation | A novice receives a complete, followable beginner plan that respects their injury and illness history | pending | — |
+| 2 | AI onboarding questions | A novice answers plain-language questions, including injury and illness history, without confusion | in-progress (built; needs novice testing) | — |
+| 3 | Plan generation | A novice receives a complete, followable beginner plan that respects their injury and illness history | in-progress (built; deploy + test) | — |
 | 4 | Progress tracking | A novice logs workouts and sees their progress | pending | — |
 | 5 | Adaptive plan | The plan visibly adjusts based on logged progress and input | pending | — |
 | 6 | Beta with novices | Real novices go from install to plan unaided, use it for 2+ weeks, and leave ratings | pending | — |

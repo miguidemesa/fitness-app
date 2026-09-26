@@ -5,9 +5,13 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "paths": {
+      "@/utils/*": [
+        "./supabase/functions/_shared/*"
+      ],
       "@/*": [
         "./src/*"
       ]
     }
-  }
+  },
+  "exclude": ["supabase/functions/*/index.ts"]
 }

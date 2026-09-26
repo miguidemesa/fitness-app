@@ -13,7 +13,12 @@ export default function RootLayout() {
   return (
     <ProfileProvider>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.ground } }} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.ground } }}>
+        <Stack.Screen
+          name="exercise/[id]"
+          options={{ headerShown: true, title: '', headerBackTitle: 'Back', headerShadowVisible: false, headerStyle: { backgroundColor: colors.ground }, headerTintColor: colors.ink }}
+        />
+      </Stack>
     </ProfileProvider>
   );
 }

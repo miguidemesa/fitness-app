@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import { DayCard } from '@/components/plan';
 import { Body, CoachBubble, Screen, Title, s } from '@/components/ui';
 import { useProfile } from '@/state/profile';
 import { colors, fonts } from '@/theme';
@@ -15,9 +16,24 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ponytail: shows the saved answers until plan generation (roadmap week 3) fills this screen.
 export default function Today() {
-  const { draft } = useProfile();
+  const { draft, plan } = useProfile();
+
+  // ponytail: always Day 1 until workout logging (milestone 4) tracks which day is next.
+  if (plan) {
+    return (
+      <Screen>
+        <Text style={s.meta}>
+          Week {plan.week} · Day 1 of {plan.days.length}
+        </Text>
+        <Title>Today</Title>
+        {plan.note ? <CoachBubble>{plan.note}</CoachBubble> : null}
+        <DayCard items={plan.days[0]} />
+        <Body style={s.hint}>Tap a move to see how to do it.</Body>
+      </Screen>
+    );
+  }
+
   const gear =
     draft.place === 'gym'
       ? 'Gym equipment'

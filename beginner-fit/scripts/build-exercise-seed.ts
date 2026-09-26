@@ -1,7 +1,7 @@
 // Builds supabase/seed.sql from free-exercise-db (public domain, https://github.com/yuhonas/free-exercise-db).
 // Run from beginner-fit/:  node scripts/build-exercise-seed.ts
 import { writeFileSync } from 'node:fs';
-import { stressAreas } from '../src/utils/stress-tags.ts';
+import { stressAreas } from '../supabase/functions/_shared/stress-tags.ts';
 
 const SOURCE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json';
 
