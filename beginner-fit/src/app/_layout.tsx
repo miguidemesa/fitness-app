@@ -1,0 +1,19 @@
+import { Archivo_500Medium, Archivo_700Bold } from '@expo-google-fonts/archivo';
+import { BarlowCondensed_800ExtraBold_Italic } from '@expo-google-fonts/barlow-condensed';
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router/stack';
+import { StatusBar } from 'expo-status-bar';
+import { ProfileProvider } from '@/state/profile';
+import { colors } from '@/theme';
+
+export default function RootLayout() {
+  const [loaded] = useFonts({ Archivo_500Medium, Archivo_700Bold, BarlowCondensed_800ExtraBold_Italic });
+  if (!loaded) return null;
+
+  return (
+    <ProfileProvider>
+      <StatusBar style="dark" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.ground } }} />
+    </ProfileProvider>
+  );
+}

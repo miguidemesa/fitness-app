@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "beginner-fit",
-    "slug": "beginner-fit",
+    "name": "Capy",
+    "slug": "capy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,6 +20,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "scheme": "capy",
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }
