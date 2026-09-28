@@ -1,6 +1,7 @@
 import { Link, Redirect, router } from 'expo-router';
-import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Share, Text, View } from 'react-native';
+import { CapyAvatar } from '@/components/capy';
 import { AreaChips, Body, Button, CoachBubble, OptionCard, Screen, StepHeader, Title, s } from '@/components/ui';
 import { saveLogs } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
@@ -31,11 +32,14 @@ export default function Workout() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resting, setResting] = useState(false);
   const [saved, setSaved] = useState<LogEntry[] | null>(null);
 
   const day = plan ? nextDay(plan.days.length, plan.id, logs) : null;
   if (saved) return <Finished saved={saved} />;
   if (!plan || day === null) return <Redirect href="/today" />;
+
+  if (resting) return <Rest onDone={() => setResting(false)} />;
 
   const items = plan.days[day];
   const item = items[i];
@@ -82,7 +86,7 @@ export default function Workout() {
           <Button
             label={last ? (saving ? 'Saving…' : 'Finish workout') : 'Next move'}
             disabled={!complete(a) || saving}
-            onPress={last ? finish : () => setI(i + 1)}
+            onPress={last ? finish : () => { setI(i + 1); setResting(true); }}
           />
         </>
       }
@@ -135,13 +139,56 @@ export default function Workout() {
   );
 }
 
+const REST_SECONDS = 30;
+
+/** Short rest between moves. Counts down on its own; the user can add time or skip. */
+function Rest({ onDone }: { onDone: () => void }) {
+  const [left, setLeft] = useState(REST_SECONDS);
+  useEffect(() => {
+    if (left <= 0) return onDone();
+    const t = setTimeout(() => setLeft((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [left]);
+  return (
+    <Screen
+      footer={
+        <>
+          <Button variant="ghost" label="+15 seconds" onPress={() => setLeft((n) => n + 15)} />
+          <Button label="Skip rest" onPress={onDone} />
+        </>
+      }
+    >
+      <View style={{ alignItems: 'center', gap: 12, paddingTop: 24 }}>
+        <CapyAvatar size={120} mood="rest" />
+        <Title>Rest</Title>
+        <Text accessibilityLiveRegion="polite" style={{ fontFamily: fonts.display, fontSize: 72, color: colors.ink }}>{left}</Text>
+        <Body>Take a breath. Shake it out. Next move is coming up.</Body>
+      </View>
+    </Screen>
+  );
+}
+
 function Finished({ saved }: { saved: LogEntry[] }) {
   const pain = [...new Set(saved.filter((l) => l.painArea).map((l) => AREA_LABEL[l.painArea!].toLowerCase()))];
   const done = saved.filter((l) => l.completed !== 'skip').length;
   return (
-    <Screen footer={<Button label="Back to Today" onPress={() => router.replace('/today')} />}>
+    <Screen
+      footer={
+        <>
+          <Button
+            variant="ghost"
+            label="Share"
+            onPress={() => Share.share({ message: `I just finished a workout with Capy: ${done} of ${saved.length} moves done. 💪` })}
+          />
+          <Button label="Back to Today" onPress={() => router.replace('/today')} />
+        </>
+      }
+    >
       <Title>Nice work!</Title>
-      <CoachBubble>
+      <View style={{ alignItems: 'center' }}>
+        <CapyAvatar size={120} mood="cheer" />
+      </View>
+      <CoachBubble mood="cheer">
         You did {done} of {saved.length} moves today. Every workout counts, especially the first few.
       </CoachBubble>
       {pain.length ? (

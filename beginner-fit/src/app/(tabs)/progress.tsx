@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
+import { CapyAvatar } from '@/components/capy';
 import { Body, Button, CoachBubble, Screen, Title, s } from '@/components/ui';
 import { deleteAccount } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
 import { colors, fonts } from '@/theme';
+import { stageFor, weeklyStreak } from '@/utils/progress';
 import { AREA_LABEL, type LogEntry } from '@/utils/types';
 
 const FEEL = { 1: 'felt easy', 2: 'felt about right', 3: 'felt hard' } as const;
@@ -67,6 +69,7 @@ export default function Progress() {
     <Screen>
       <Text style={s.meta}>Week {plan?.week ?? 1}</Text>
       <Title>Progress</Title>
+      <Streak workouts={sessions.length} streak={weeklyStreak(logs, new Date().toLocaleDateString('en-CA'))} />
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Stat value={sessions.length} label="Workouts" />
         <Stat value={logs.filter((l) => l.completed !== 'skip').length} label="Moves done" />
@@ -77,6 +80,23 @@ export default function Progress() {
       ))}
       <DeleteData />
     </Screen>
+  );
+}
+
+/** Capy's stage (grows with workouts) and the weekly streak. */
+function Streak({ workouts, streak }: { workouts: number; streak: number }) {
+  const { stage, next } = stageFor(workouts);
+  return (
+    <View style={[s.card, { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 14 }]}>
+      <CapyAvatar size={64} mood="cheer" />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontFamily: fonts.display, fontSize: 24, color: colors.ink }}>Capy the {stage.name}</Text>
+        <Body>{next ? `${next.at - workouts} more workout${next.at - workouts === 1 ? '' : 's'} to become ${next.name}.` : "You've reached Capy's top stage!"}</Body>
+        <Text style={s.meta}>
+          {streak ? `🔥 ${streak}-week streak` : 'Do a workout this week to start a streak.'}
+        </Text>
+      </View>
+    </View>
   );
 }
 

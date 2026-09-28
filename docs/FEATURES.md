@@ -104,7 +104,15 @@ Each change is shown on Today with its reason, e.g. "Swapped Lunges for Glute Br
 
 ---
 
-## 9. Delete my data 🟡
+## 9. Rest timer, Capy's poses, streak and stages 🟡
+
+- **Rest timer:** after each move, a 30-second countdown with a calm resting Capy. "+15 seconds" or "Skip rest".
+- **Capy's poses:** hello, caring, cheerful (workout finished) and resting.
+- **Stages:** Capy grows with workouts done: Pup, Explorer (1), Athlete (4), Champion (12), Legend (30). Progress shows how many more to the next.
+- **Weekly streak:** consecutive Monday–Sunday weeks with at least one workout. An empty current week doesn't break it until the week is over.
+- **Share:** the "Nice work!" screen has a Share button (plain text message).
+
+## 10. Delete my data 🟡
 
 Progress ends with **"Delete my data"**. After a confirmation, the account, plan and every log are removed for good and the app returns to the start. Done on the server (`delete-account`), so it can't be faked from the app.
 
@@ -116,14 +124,12 @@ Progress ends with **"Delete my data"**. After a confirmation, the account, plan
 - **Backend:** Supabase.
   - **Private by default:** each person can read and change only their own data. We checked this with two test users against the live project.
   - **Plans:** only the server can write plans; people can read their own but can't create or change them.
-- **Tests:** 17 automated tests cover the safety rules (health check, filtering, plan checks, weekly changes, joint tags, equipment, week tracking). All pass.
+- **Tests:** 19 automated tests cover the safety rules (health check, filtering, plan checks, weekly changes, joint tags, equipment, week tracking) plus streak and stages. All pass.
 
 ## Not built yet
 
 These are in the roadmap:
-- rest timer with Capy's poses
-- weekly streak and Capy's stages
-- share card
+- a designed share card image (today the Share button sends plain text)
 - free trial and one-time purchase
 - crash reporting
 - plain-language move instructions

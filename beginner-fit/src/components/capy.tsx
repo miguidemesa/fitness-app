@@ -2,7 +2,7 @@ import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 import { View } from 'react-native';
 import { colors } from '@/theme';
 
-type Mood = 'hello' | 'caring';
+export type Mood = 'hello' | 'caring' | 'cheer' | 'rest';
 
 const FACE: Record<Mood, { eyes: string; brows: string; mouth: string }> = {
   hello: {
@@ -14,6 +14,18 @@ const FACE: Record<Mood, { eyes: string; brows: string; mouth: string }> = {
     eyes: 'M73 86 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0 M117 86 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0',
     brows: 'M70 77 L84 72 M130 77 L116 72',
     mouth: 'M93 121 q7 -3 14 0',
+  },
+  // Happy squint eyes, wide smile: workout done.
+  cheer: {
+    eyes: 'M71 88 q7 -9 14 0 M115 88 q7 -9 14 0',
+    brows: '',
+    mouth: 'M86 116 q14 16 28 0',
+  },
+  // Eyes closed, calm breath: resting between moves.
+  rest: {
+    eyes: 'M71 86 q7 6 14 0 M115 86 q7 6 14 0',
+    brows: '',
+    mouth: 'M94 120 q6 4 12 0',
   },
 };
 

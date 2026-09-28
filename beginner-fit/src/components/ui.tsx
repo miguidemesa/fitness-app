@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type TextProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { CapyAvatar } from '@/components/capy';
+import { CapyAvatar, type Mood } from '@/components/capy';
 import { colors, fonts } from '@/theme';
 import { AREA_LABEL, AREAS, type Area } from '@/utils/types';
 
@@ -70,7 +70,7 @@ export function OptionCard({ label, hint, selected, onPress, multi }: { label: s
   );
 }
 
-export function CoachBubble({ children, mood }: { children: ReactNode; mood?: 'hello' | 'caring' }) {
+export function CoachBubble({ children, mood }: { children: ReactNode; mood?: Mood }) {
   return (
     <View style={[s.card, s.coach]}>
       <CapyAvatar mood={mood} />

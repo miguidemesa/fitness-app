@@ -38,3 +38,34 @@ export const toWorkoutLog = (l: LogEntry): WorkoutLog => ({
   pain: l.pain,
   painArea: l.painArea,
 });
+
+const DAY = 86_400_000;
+/** Monday-based week number for a YYYY-MM-DD date (days since Mon 1970-01-05, so week 0 starts then). */
+const weekOf = (date: string) => Math.floor((Date.parse(date) / DAY - 4) / 7);
+
+/**
+ * Weekly streak: consecutive calendar weeks (Mon–Sun) with at least one logged workout, ending this week.
+ * A week with nothing yet doesn't break the streak until it's over, so it may end last week.
+ */
+export function weeklyStreak(logs: LogEntry[], today: string): number {
+  const hit = new Set(logs.filter((l) => l.completed !== 'skip').map((l) => weekOf(l.loggedOn)));
+  let w = weekOf(today);
+  if (!hit.has(w)) w--;
+  let n = 0;
+  while (hit.has(w--)) n++;
+  return n;
+}
+
+/** Capy grows with total workouts done. Name and threshold: first workout, then 4, 12, 30. */
+export const STAGES = [
+  { name: 'Pup', at: 0 },
+  { name: 'Explorer', at: 1 },
+  { name: 'Athlete', at: 4 },
+  { name: 'Champion', at: 12 },
+  { name: 'Legend', at: 30 },
+] as const;
+
+export function stageFor(workouts: number) {
+  const i = STAGES.findLastIndex((s) => workouts >= s.at);
+  return { stage: STAGES[i], next: STAGES[i + 1] ?? null };
+}
