@@ -1,5 +1,7 @@
 # AI Beginner Workout Companion
 
+> What's built so far: see [FEATURES.md](FEATURES.md).
+
 ## Problem
 Complete gym novices, who know a little about fitness but not where or how to start, get lost in current workout apps. Those apps assume the user already knows fitness and bury them in options and information. The cost: beginners get stuck, ask others for help, or give up before their first real workout.
 
@@ -60,8 +62,8 @@ We'll know we're right when **novices can get from install to a usable plan with
 | 1 | Validate problem | 5–10 novice interviews confirm the navigation/knowledge barrier | pending | — |
 | 2 | AI onboarding questions | A novice answers plain-language questions, including injury and illness history, without confusion | in-progress (built; needs novice testing) | — |
 | 3 | Plan generation | A novice receives a complete, followable beginner plan that respects their injury and illness history | in-progress (built; deploy + test) | — |
-| 4 | Progress tracking | A novice logs workouts and sees their progress | pending | — |
-| 5 | Adaptive plan | The plan visibly adjusts based on logged progress and input | pending | — |
+| 4 | Progress tracking | A novice logs workouts and sees their progress | in-progress (built; deploy + test) | — |
+| 5 | Adaptive plan | The plan visibly adjusts based on logged progress and input | in-progress (built; deploy + test) | — |
 | 6 | Beta with novices | Real novices go from install to plan unaided, use it for 2+ weeks, and leave ratings | pending | — |
 
 ## Open Questions

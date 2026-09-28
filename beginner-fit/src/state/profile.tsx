@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { fetchExercises, loadSaved, type ExerciseDetail, type SavedPlan } from '@/lib/supabase';
 import type { Gear, Place } from '@/utils/equipment';
 import type { ScreeningAnswers } from '@/utils/screening';
-import type { Area, Profile } from '@/utils/types';
+import type { Area, LogEntry, Profile } from '@/utils/types';
 
 export type ProfileDraft = {
   goal?: Profile['goal'];
@@ -39,6 +39,9 @@ type Ctx = {
   plan: SavedPlan | null;
   exercises: Record<string, ExerciseDetail>;
   setPlan: (plan: SavedPlan) => Promise<void>;
+  /** Every logged move, oldest first. */
+  logs: LogEntry[];
+  addLogs: (logs: LogEntry[]) => void;
 };
 const ProfileContext = createContext<Ctx | null>(null);
 
@@ -46,6 +49,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [draft, setDraft] = useState(START);
   const [plan, setPlanState] = useState<SavedPlan | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [exercises, setExercises] = useState<Record<string, ExerciseDetail>>({});
   const update = (patch: Partial<ProfileDraft>) => setDraft((d) => ({ ...d, ...patch }));
 
@@ -59,6 +63,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       .then(async (saved) => {
         if (!saved) return;
         update(saved.draft);
+        setLogs(saved.logs);
         if (saved.plan) await setPlan(saved.plan);
       })
       .catch(() => {}) // offline on launch: start fresh; answers are re-saved at the disclaimer
@@ -66,7 +71,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ ready, draft, update, reset: () => setDraft(START), plan, exercises, setPlan }}>{children}</ProfileContext.Provider>
+    <ProfileContext.Provider value={{ ready, draft, update, reset: () => setDraft(START), plan, exercises, setPlan, logs, addLogs: (l) => setLogs((prev) => [...prev, ...l]) }}>{children}</ProfileContext.Provider>
   );
 }
 

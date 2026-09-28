@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { AppState } from 'react-native';
 import type { ProfileDraft } from '@/state/profile';
 import { toDbEquipment } from '@/utils/equipment';
-import type { PlanItem } from '@/utils/types';
+import { fromLogRow } from '@/utils/progress';
+import type { LogEntry, PlanItem } from '@/utils/types';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY; // publishable (or legacy anon) key — public by design
@@ -52,18 +53,41 @@ export async function saveProfile(d: ProfileDraft): Promise<boolean> {
   return true;
 }
 
-export type SavedPlan = { id: string; week: number; days: PlanItem[][]; source: 'ai' | 'fallback' | 'adapted'; note: string | null };
+export type SavedPlan = {
+  id: string; week: number; days: PlanItem[][]; source: 'ai' | 'fallback' | 'adapted'; note: string | null;
+  changes: string[]; see_professional: boolean };
 export type ExerciseDetail = { id: string; name: string; equipment: string | null; primaryMuscles: string[]; instructions: string[]; images: string[] };
 
 // free-exercise-db image paths are relative to its repo. ponytail: hotlinked; self-host before launch (PRD open question).
 const IMAGE_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 
-/** Asks the server for this user's week-1 plan (built once, then returned as saved). */
+/** The user's current plan. The server builds week 1 on first call, and next week once every day is logged. */
 export async function generatePlan(): Promise<SavedPlan> {
   if (!supabase) throw new Error('Supabase is not configured');
   const { data, error } = await supabase.functions.invoke<SavedPlan>('generate-plan', { method: 'POST' });
   if (error || !data) throw error ?? new Error('No plan returned');
   return data;
+}
+
+/** Saves one finished workout day. */
+export async function saveLogs(entries: Omit<LogEntry, 'loggedOn'>[]): Promise<LogEntry[]> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase
+    .from('workout_logs')
+    .insert(
+      entries.map((e) => ({
+        plan_id: e.planId,
+        day: e.day,
+        exercise_id: e.exerciseId,
+        completed: e.completed,
+        difficulty: e.difficulty,
+        pain: e.pain,
+        pain_area: e.painArea,
+      })),
+    )
+    .select();
+  if (error) throw error;
+  return data.map(fromLogRow);
 }
 
 export async function fetchExercises(ids: string[]): Promise<Record<string, ExerciseDetail>> {
@@ -79,13 +103,14 @@ export async function fetchExercises(ids: string[]): Promise<Record<string, Exer
 }
 
 /** On launch: the signed-in user's saved answers and latest plan, or null for a first run. */
-export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan: SavedPlan | null } | null> {
+export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan: SavedPlan | null; logs: LogEntry[] } | null> {
   if (!supabase) return null;
   const { data: session } = await supabase.auth.getSession();
   if (!session.session) return null;
-  const [{ data: p }, { data: plan }] = await Promise.all([
+  const [{ data: p }, { data: plan }, { data: logs }] = await Promise.all([
     supabase.from('profiles').select('*').maybeSingle(),
     supabase.from('plans').select('*').order('week', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('workout_logs').select('*').order('created_at'),
   ]);
   if (!p) return null;
   return {
@@ -101,5 +126,6 @@ export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan:
       disclaimerAcceptedAt: p.disclaimer_accepted_at ?? undefined,
     },
     plan: plan as SavedPlan | null,
+    logs: (logs ?? []).map(fromLogRow),
   };
 }

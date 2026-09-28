@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { CapyAvatar } from '@/components/capy';
 import { colors, fonts } from '@/theme';
+import { AREA_LABEL, AREAS, type Area } from '@/utils/types';
 
 export function Screen({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   return (
@@ -77,6 +78,28 @@ export function CoachBubble({ children, mood }: { children: ReactNode; mood?: 'h
         <Text style={s.meta}>Capy · your coach</Text>
         <Text style={s.coachText}>{children}</Text>
       </View>
+    </View>
+  );
+}
+
+/** Body-area chips in a two-column grid. `multi` makes them checkboxes instead of radios. */
+export function AreaChips({ selected, onPress, multi }: { selected: Area[]; onPress: (a: Area) => void; multi?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {AREAS.map((a) => {
+        const on = selected.includes(a);
+        return (
+          <Pressable
+            key={a}
+            accessibilityRole={multi ? 'checkbox' : 'radio'}
+            accessibilityState={multi ? { checked: on } : { selected: on }}
+            onPress={() => onPress(a)}
+            style={[s.option, { width: '48%', justifyContent: 'center', minHeight: 52 }, on && s.optionOn]}
+          >
+            <Text style={{ fontFamily: fonts.bold, fontSize: 16, color: on ? colors.accent : colors.ink }}>{AREA_LABEL[a]}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

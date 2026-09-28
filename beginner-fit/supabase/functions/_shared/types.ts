@@ -32,3 +32,26 @@ export type WorkoutLog = {
   pain: boolean;
   painArea: Area | null;
 };
+
+export const AREA_LABEL: Record<Area, string> = {
+  neck: 'Neck',
+  shoulder: 'Shoulder',
+  elbow: 'Elbow',
+  wrist: 'Wrist',
+  lower_back: 'Lower back',
+  hip: 'Hip',
+  knee: 'Knee',
+  ankle: 'Ankle',
+};
+
+/** One logged move as stored (workout_logs row, camelCased). */
+export type LogEntry = {
+  planId: string;
+  day: number; // index into plan.days
+  exerciseId: string;
+  loggedOn: string; // ISO yyyy-mm-dd
+  completed: 'all' | 'some' | 'skip';
+  difficulty: Difficulty | null; // null when skipped
+  pain: boolean;
+  painArea: Area | null;
+};

@@ -4,7 +4,8 @@ import { CoachBubble, Screen, Title, s } from '@/components/ui';
 import { useProfile } from '@/state/profile';
 
 export default function Week() {
-  const { draft, plan } = useProfile();
+  const { draft, plan, logs } = useProfile();
+  const done = new Set(logs.filter((l) => l.planId === plan?.id).map((l) => l.day));
   return (
     <Screen>
       <Text style={s.meta}>
@@ -14,7 +15,7 @@ export default function Week() {
       {plan ? (
         plan.days.map((day, d) => [
           <Text key={`h${d}`} accessibilityRole="header" style={[s.meta, { marginTop: 6 }]}>
-            Day {d + 1} · {day.length} moves
+            Day {d + 1} · {day.length} moves{done.has(d) ? ' · Done ✓' : ''}
           </Text>,
           <DayCard key={`d${d}`} items={day} />,
         ])

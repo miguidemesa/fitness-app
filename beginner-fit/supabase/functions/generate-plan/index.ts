@@ -1,9 +1,14 @@
-// Builds a user's week-1 plan. Claude picks from the user's vetted exercise list; the rules
-// in _shared validate it, and the rule-built plan takes over if the AI output fails twice.
+// Returns the user's current plan, building the next one when needed:
+// - no plan yet → week 1: Claude picks from the user's vetted exercise list, the rules in _shared
+//   validate it, and the rule-built plan takes over if the AI output fails twice.
+// - every day of the latest week logged → next week from the adapt rules (no AI: safe and free).
+// - otherwise → the latest plan as saved.
 import Anthropic from 'npm:@anthropic-ai/sdk@0.128.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.117.1';
+import { adaptPlan } from '../_shared/adapt.ts';
 import { filterExercises } from '../_shared/allowlist.ts';
 import { CAPS, fallbackPlan, validatePlan } from '../_shared/plan.ts';
+import { fromLogRow, nextDay, toWorkoutLog } from '../_shared/progress.ts';
 import { isHighRisk } from '../_shared/screening.ts';
 import type { Exercise, Plan, Profile } from '../_shared/types.ts';
 
@@ -21,8 +26,14 @@ Deno.serve(async (req) => {
   const user = userData.user;
   if (!user) return json({ error: 'not signed in' }, 401);
 
-  const existing = await db.from('plans').select('*').eq('week', 1).maybeSingle();
-  if (existing.data) return json(existing.data); // one AI call per user, not per tap
+  const { data: latest } = await db.from('plans').select('*').order('week', { ascending: false }).limit(1).maybeSingle();
+  let logs: ReturnType<typeof fromLogRow>[] = [];
+  if (latest) {
+    const { data: rows, error } = await db.from('workout_logs').select('*').eq('plan_id', latest.id);
+    if (error) return json({ error: error.message }, 500);
+    logs = rows.map(fromLogRow);
+    if (nextDay(latest.days.length, latest.id, logs) !== null) return json(latest); // week not finished yet
+  }
 
   const { data: p } = await db.from('profiles').select('*').maybeSingle();
   if (!p?.disclaimer_accepted_at) return json({ error: 'onboarding not finished' }, 409);
@@ -45,32 +56,48 @@ Deno.serve(async (req) => {
   );
   if (allowlist.length < CAPS.exercisesPerDay.min) return json({ error: 'not enough safe exercises for this profile' }, 422);
 
-  let plan: Plan | null = null;
-  let note = FALLBACK_NOTE;
-  let source: 'ai' | 'fallback' = 'fallback';
-  if (Deno.env.get('ANTHROPIC_API_KEY')) {
-    for (let attempt = 0; attempt < 2 && !plan; attempt++) {
-      try {
-        const out = await askClaude(profile, allowlist);
-        const candidate = { week: 1, days: out.days };
-        const problems = validatePlan(candidate, allowlist, profile);
-        if (problems.length === 0) {
-          plan = candidate;
-          note = out.note;
-          source = 'ai';
-        } else console.warn('AI plan rejected:', problems);
-      } catch (e) {
-        console.warn('AI call failed:', e);
+  let row: Record<string, unknown>;
+  if (latest) {
+    const a = adaptPlan({ week: latest.week, days: latest.days }, logs.map(toWorkoutLog), allowlist);
+    row = {
+      week: a.plan.week,
+      days: a.plan.days,
+      source: 'adapted',
+      note: a.changes.length
+        ? `Week ${latest.week} done! I changed a few things based on how it felt.`
+        : `Week ${latest.week} done! It all felt about right, so we'll keep going with the same moves.`,
+      changes: a.changes,
+      see_professional: a.seeProfessional,
+    };
+  } else {
+    let plan: Plan | null = null;
+    let note = FALLBACK_NOTE;
+    let source: 'ai' | 'fallback' = 'fallback';
+    if (Deno.env.get('ANTHROPIC_API_KEY')) {
+      for (let attempt = 0; attempt < 2 && !plan; attempt++) {
+        try {
+          const out = await askClaude(profile, allowlist);
+          const candidate = { week: 1, days: out.days };
+          const problems = validatePlan(candidate, allowlist, profile);
+          if (problems.length === 0) {
+            plan = candidate;
+            note = out.note;
+            source = 'ai';
+          } else console.warn('AI plan rejected:', problems);
+        } catch (e) {
+          console.warn('AI call failed:', e);
+        }
       }
     }
+    plan ??= fallbackPlan(allowlist, profile);
+    row = { week: 1, days: plan.days, source, note };
   }
-  plan ??= fallbackPlan(allowlist, profile);
 
   // Service role writes the plan: users can read plans but never write them directly.
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const saved = await admin
     .from('plans')
-    .upsert({ user_id: user.id, week: 1, days: plan.days, source, note }, { onConflict: 'user_id,week' })
+    .upsert({ ...row, user_id: user.id }, { onConflict: 'user_id,week' })
     .select()
     .single();
   if (saved.error) return json({ error: saved.error.message }, 500);
