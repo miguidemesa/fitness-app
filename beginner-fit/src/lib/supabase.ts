@@ -90,6 +90,14 @@ export async function saveLogs(entries: Omit<LogEntry, 'loggedOn'>[]): Promise<L
   return data.map(fromLogRow);
 }
 
+/** Deletes the account and everything saved for it, then clears the local session. */
+export async function deleteAccount(): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+  if (error) throw error;
+  await supabase.auth.signOut({ scope: 'local' });
+}
+
 export async function fetchExercises(ids: string[]): Promise<Record<string, ExerciseDetail>> {
   if (!supabase || !ids.length) return {};
   const { data, error } = await supabase.from('exercises').select('id, name, equipment, primary_muscles, instructions, images').in('id', ids);

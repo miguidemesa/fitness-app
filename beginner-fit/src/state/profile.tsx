@@ -71,7 +71,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ ready, draft, update, reset: () => setDraft(START), plan, exercises, setPlan, logs, addLogs: (l) => setLogs((prev) => [...prev, ...l]) }}>{children}</ProfileContext.Provider>
+    <ProfileContext.Provider value={{ ready, draft, update, reset: () => { setDraft(START); setPlanState(null); setLogs([]); }, plan, exercises, setPlan, logs, addLogs: (l) => setLogs((prev) => [...prev, ...l]) }}>{children}</ProfileContext.Provider>
   );
 }
 

@@ -1,5 +1,8 @@
-import { Text, View } from 'react-native';
-import { Body, CoachBubble, Screen, Title, s } from '@/components/ui';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Alert, Text, View } from 'react-native';
+import { Body, Button, CoachBubble, Screen, Title, s } from '@/components/ui';
+import { deleteAccount } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
 import { colors, fonts } from '@/theme';
 import { AREA_LABEL, type LogEntry } from '@/utils/types';
@@ -13,6 +16,32 @@ function Stat({ value, label }: { value: number; label: string }) {
       <Text style={s.meta}>{label}</Text>
     </View>
   );
+}
+
+/** Permanent delete, behind a confirmation. Required by the app stores. */
+function DeleteData() {
+  const { reset } = useProfile();
+  const [busy, setBusy] = useState(false);
+  const confirm = () =>
+    Alert.alert('Delete all my data?', 'This removes your plan and workout history for good. You can start again any time.', [
+      { text: 'Keep my data', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setBusy(true);
+          try {
+            await deleteAccount();
+            reset();
+            router.replace('/onboarding');
+          } catch {
+            Alert.alert("Couldn't delete", 'Check your connection and try again.');
+            setBusy(false);
+          }
+        },
+      },
+    ]);
+  return <Button variant="ghost" label={busy ? 'Deleting…' : 'Delete my data'} disabled={busy} onPress={confirm} />;
 }
 
 /** Logged workouts, newest first: one card per plan day. */
@@ -29,6 +58,7 @@ export default function Progress() {
         <Text style={s.meta}>Week {plan?.week ?? 1}</Text>
         <Title>Progress</Title>
         <CoachBubble>Nothing logged yet. After your first workout, you'll see how each move felt here.</CoachBubble>
+        <DeleteData />
       </Screen>
     );
   }
@@ -45,6 +75,7 @@ export default function Progress() {
       {sessions.map((moves) => (
         <Session key={`${moves[0].planId}:${moves[0].day}`} moves={moves} />
       ))}
+      <DeleteData />
     </Screen>
   );
 }

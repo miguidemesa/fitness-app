@@ -104,6 +104,12 @@ Each change is shown on Today with its reason, e.g. "Swapped Lunges for Glute Br
 
 ---
 
+## 9. Delete my data 🟡
+
+Progress ends with **"Delete my data"**. After a confirmation, the account, plan and every log are removed for good and the app returns to the start. Done on the server (`delete-account`), so it can't be faked from the app.
+
+---
+
 ## Behind the scenes
 
 - **App:** Expo (React Native) for iPhone and Android, with the Capy look (sporty fonts, blue accent, Capy avatar).
@@ -119,7 +125,6 @@ These are in the roadmap:
 - weekly streak and Capy's stages
 - share card
 - free trial and one-time purchase
-- deleting your data in the app
 - crash reporting
 - plain-language move instructions
 - buddies and more coaches (after launch)
@@ -127,4 +132,4 @@ These are in the roadmap:
 ## Before the logging features work live
 
 1. Run the migrations `20260926010000_plan_note.sql` and `20260926020000_logging.sql` in Supabase.
-2. Deploy the `generate-plan` function. The Anthropic key is optional.
+2. Deploy the `generate-plan` and `delete-account` functions. The Anthropic key is optional.
