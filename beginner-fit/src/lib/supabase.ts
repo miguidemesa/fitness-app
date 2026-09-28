@@ -40,6 +40,8 @@ export async function saveProfile(d: ProfileDraft): Promise<boolean> {
     goal: d.goal,
     days_per_week: d.daysPerWeek,
     minutes_per_session: d.minutesPerSession,
+    schedule: d.schedule,
+    display_name: d.displayName ?? null,
     place: d.place,
     gear: d.gear,
     equipment: toDbEquipment(d.place, d.gear),
@@ -77,6 +79,7 @@ export async function saveLogs(entries: Omit<LogEntry, 'loggedOn'>[]): Promise<L
     .insert(
       entries.map((e) => ({
         plan_id: e.planId,
+        logged_on: new Date().toLocaleDateString('en-CA'), // the user's own date, not the server's UTC date
         day: e.day,
         exercise_id: e.exerciseId,
         completed: e.completed,
@@ -126,6 +129,9 @@ export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan:
       goal: p.goal ?? undefined,
       daysPerWeek: p.days_per_week,
       minutesPerSession: p.minutes_per_session,
+      // Accounts made before schedules existed have none: fall back to the default spread.
+      schedule: p.schedule?.length ? p.schedule : undefined,
+      displayName: p.display_name ?? undefined,
       place: p.place,
       gear: p.gear,
       answers: p.screening,
@@ -136,4 +142,65 @@ export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan:
     plan: plan as SavedPlan | null,
     logs: (logs ?? []).map(fromLogRow),
   };
+}
+
+// ---- Buddies and account ----
+
+export type BuddyState =
+  | { state: 'none' }
+  | { state: 'invited'; code: string }
+  | { state: 'paired'; name: string; streak: number; lastWorkoutOn: string | null };
+
+export async function buddyStatus(): Promise<BuddyState> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase.functions.invoke<BuddyState>('buddy-status', { body: { today: new Date().toLocaleDateString('en-CA') } });
+  if (error || !data) throw error ?? new Error('No buddy status');
+  return data;
+}
+
+export async function setDisplayName(name: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.from('profiles').update({ display_name: name.trim() }).eq('user_id', await userId());
+  if (error) throw error;
+}
+
+export async function createInvite(): Promise<string> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase.rpc('create_buddy_invite');
+  if (error) throw error;
+  return data as string;
+}
+
+export async function acceptInvite(code: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.rpc('accept_buddy_invite', { p_code: code });
+  if (error) throw error;
+}
+
+/** Ends the pairing (or cancels an unused invite). No message goes to the other person. */
+export async function removeBuddy(): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.from('buddy_links').delete().not('id', 'is', null); // row level security limits this to the user's own link
+  if (error) throw error;
+}
+
+/** True until the user links an email. */
+export async function isAnonymous(): Promise<boolean> {
+  if (!supabase) return true;
+  const { data } = await supabase.auth.getSession();
+  return !!data.session?.user.is_anonymous;
+}
+
+/** Step 1 of saving progress: emails a code. ponytail: needs {{ .Token }} in the "Change Email Address" template in the Supabase dashboard. */
+export async function linkEmail(email: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.auth.updateUser({ email: email.trim() });
+  if (error) throw error;
+}
+
+/** Step 2: the code from the email turns the anonymous account into a real one, keeping all its data. */
+export async function confirmEmail(email: string, token: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: token.trim(), type: 'email_change' });
+  if (error) throw error;
 }

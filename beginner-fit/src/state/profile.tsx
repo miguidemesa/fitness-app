@@ -8,6 +8,9 @@ export type ProfileDraft = {
   goal?: Profile['goal'];
   daysPerWeek: number;
   minutesPerSession: number;
+  /** Weekdays to train, 0 = Monday … 6 = Sunday. Its length is the days per week. */
+  schedule: number[];
+  displayName?: string;
   place: Place;
   gear: Gear[];
   noGear: boolean;
@@ -22,6 +25,7 @@ export type ProfileDraft = {
 const START: ProfileDraft = {
   daysPerWeek: 3,
   minutesPerSession: 30,
+  schedule: [0, 2, 4],
   place: 'home',
   gear: [],
   noGear: false,
