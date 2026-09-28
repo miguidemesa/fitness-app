@@ -129,8 +129,8 @@ export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan:
       goal: p.goal ?? undefined,
       daysPerWeek: p.days_per_week,
       minutesPerSession: p.minutes_per_session,
-      // Accounts made before schedules existed have none: fall back to the default spread.
-      schedule: p.schedule?.length ? p.schedule : undefined,
+      // Accounts made before schedules existed have none: leave the key out so the app's default days stay.
+      ...(p.schedule?.length ? { schedule: p.schedule as number[] } : {}),
       displayName: p.display_name ?? undefined,
       place: p.place,
       gear: p.gear,

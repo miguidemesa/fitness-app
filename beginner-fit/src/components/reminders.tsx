@@ -22,8 +22,14 @@ export function ScheduleCard() {
         await applyReminders({ ...next, on: false }, schedule);
         Alert.alert('Notifications are off', "Allow notifications for Capy in your phone's settings to get reminders.");
       }
-    } catch {
-      Alert.alert("Couldn't set reminders", 'Try again in a moment.');
+    } catch (e) {
+      setRem({ ...next, on: false });
+      Alert.alert(
+        "Couldn't set reminders",
+        e instanceof Error && e.message === 'unsupported'
+          ? "Reminders need the installed Capy app. They don't work in Expo Go."
+          : 'Try again in a moment.',
+      );
     }
   };
 
