@@ -82,6 +82,37 @@ export function CoachBubble({ children, mood }: { children: ReactNode; mood?: Mo
   );
 }
 
+export const MIN_DAYS = 2;
+export const MAX_DAYS = 4;
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** Seven weekday checkboxes (0 = Monday … 6 = Sunday). Picking is capped at MAX_DAYS. */
+export function WeekdayChips({ selected, onChange }: { selected: number[]; onChange: (days: number[]) => void }) {
+  const toggle = (d: number) => {
+    const on = selected.includes(d);
+    if (!on && selected.length >= MAX_DAYS) return;
+    onChange((on ? selected.filter((x) => x !== d) : [...selected, d]).sort());
+  };
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {WEEKDAYS.map((label, d) => {
+        const on = selected.includes(d);
+        return (
+          <Pressable
+            key={label}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: on }}
+            onPress={() => toggle(d)}
+            style={[s.option, { minWidth: 72, minHeight: 52, justifyContent: 'center', alignItems: 'center' }, on && s.optionOn]}
+          >
+            <Text style={{ fontFamily: fonts.bold, fontSize: 17, color: on ? colors.accent : colors.ink }}>{label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 /** Body-area chips in a two-column grid. `multi` makes them checkboxes instead of radios. */
 export function AreaChips({ selected, onPress, multi }: { selected: Area[]; onPress: (a: Area) => void; multi?: boolean }) {
   return (

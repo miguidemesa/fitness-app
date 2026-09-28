@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { CapyAvatar } from '@/components/capy';
+import { ScheduleCard } from '@/components/reminders';
 import { Body, Button, CoachBubble, Screen, Title, s } from '@/components/ui';
 import { deleteAccount } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
@@ -60,6 +61,7 @@ export default function Progress() {
         <Text style={s.meta}>Week {plan?.week ?? 1}</Text>
         <Title>Progress</Title>
         <CoachBubble>Nothing logged yet. After your first workout, you'll see how each move felt here.</CoachBubble>
+        <ScheduleCard />
         <DeleteData />
       </Screen>
     );
@@ -78,6 +80,7 @@ export default function Progress() {
       {sessions.map((moves) => (
         <Session key={`${moves[0].planId}:${moves[0].day}`} moves={moves} />
       ))}
+      <ScheduleCard />
       <DeleteData />
     </Screen>
   );
