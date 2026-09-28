@@ -1,4 +1,20 @@
+import type { Profile } from './types.ts';
+
 export type Person = { schedule: number[]; done: string[] };
+
+/**
+ * One profile safe for both buddies: only the equipment both have, every area either must protect,
+ * and the shorter plan. The plan built from it fits either person.
+ */
+export function mergeProfiles(a: Profile, b: Profile): Profile {
+  return {
+    goal: a.goal,
+    daysPerWeek: Math.min(a.daysPerWeek, b.daysPerWeek),
+    minutesPerSession: Math.min(a.minutesPerSession, b.minutesPerSession),
+    equipment: a.equipment.filter((e) => b.equipment.includes(e)),
+    injuredAreas: [...new Set([...a.injuredAreas, ...b.injuredAreas])],
+  };
+}
 
 const DAY = 86_400_000;
 /** 0 = Monday … 6 = Sunday, for a YYYY-MM-DD date. */

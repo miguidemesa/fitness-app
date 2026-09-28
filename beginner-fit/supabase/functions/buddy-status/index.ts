@@ -36,8 +36,11 @@ Deno.serve(async (req) => {
   const [mine, theirs] = await Promise.all([person(me), person(other)]);
   const as = (x: typeof mine): Person => ({ schedule: x.schedule, done: x.done });
 
+  const [iOn, theyOn] = link.inviter === me ? [link.inviter_together, link.buddy_together] : [link.buddy_together, link.inviter_together];
   return json({
     state: 'paired',
+    iAgreed: iOn,
+    together: iOn && theyOn ? 'on' : iOn ? 'waiting' : 'off',
     name: theirs.name ?? 'Your buddy',
     streak: buddyStreak(as(mine), as(theirs), link.paired_on, today),
     lastWorkoutOn: theirs.done.at(-1) ?? null,

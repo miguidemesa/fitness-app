@@ -149,7 +149,14 @@ export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan:
 export type BuddyState =
   | { state: 'none' }
   | { state: 'invited'; code: string }
-  | { state: 'paired'; name: string; streak: number; lastWorkoutOn: string | null };
+  | { state: 'paired'; name: string; streak: number; lastWorkoutOn: string | null; together: 'off' | 'waiting' | 'on'; iAgreed: boolean };
+
+/** Turns "train together" on or off for this user. It works only while both are on. */
+export async function setTogether(on: boolean): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.rpc('set_train_together', { p_on: on });
+  if (error) throw error;
+}
 
 export async function buddyStatus(): Promise<BuddyState> {
   if (!supabase) throw new Error('Supabase is not configured');

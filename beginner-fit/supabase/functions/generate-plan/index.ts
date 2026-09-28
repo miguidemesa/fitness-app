@@ -7,6 +7,7 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.128.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.117.1';
 import { adaptPlan } from '../_shared/adapt.ts';
 import { filterExercises } from '../_shared/allowlist.ts';
+import { mergeProfiles } from '../_shared/buddy.ts';
 import { CAPS, fallbackPlan, validatePlan } from '../_shared/plan.ts';
 import { fromLogRow, nextDay, toWorkoutLog } from '../_shared/progress.ts';
 import { isHighRisk } from '../_shared/screening.ts';
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
   // The app checks this too, but the server is the trust boundary.
   if (isHighRisk(p.screening ?? {})) return json({ error: 'medical clearance needed' }, 403);
 
-  const profile: Profile = {
+  let profile: Profile = {
     goal: p.goal ?? 'feel_healthier',
     daysPerWeek: p.days_per_week,
     minutesPerSession: p.minutes_per_session,
@@ -48,12 +49,34 @@ Deno.serve(async (req) => {
     injuredAreas: p.injured_areas,
   };
 
+  // Train together: while both buddies have it on, build from a profile safe for both.
+  // Only what the plan is built from is read of the buddy's profile; none of it is returned.
+  const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const { data: link } = await db.from('buddy_links').select('*').maybeSingle(); // row level security: own link only
+  let together = false;
+  if (link?.buddy && link.inviter_together && link.buddy_together) {
+    const { data: o } = await admin.from('profiles').select('*').eq('user_id', link.inviter === user.id ? link.buddy : link.inviter).maybeSingle();
+    // A buddy who hasn't finished onboarding, or needs medical clearance, can't shape anyone's plan.
+    if (o?.disclaimer_accepted_at && !isHighRisk(o.screening ?? {})) {
+      profile = mergeProfiles(profile, {
+        goal: profile.goal,
+        daysPerWeek: o.days_per_week,
+        minutesPerSession: o.minutes_per_session,
+        equipment: o.equipment,
+        injuredAreas: o.injured_areas,
+      });
+      together = true;
+    }
+  }
+
   const { data: rows, error } = await db.from('exercises').select('id, name, level, equipment, primary_muscles, stress_areas');
   if (error) return json({ error: error.message }, 500);
   const allowlist = filterExercises(
     profile,
     rows.map((r): Exercise => ({ id: r.id, name: r.name, level: r.level, equipment: r.equipment, primaryMuscles: r.primary_muscles, stressAreas: r.stress_areas })),
   );
+  // Same order for both buddies, so the rule-built week 1 comes out identical.
+  if (together) allowlist.sort((x, y) => x.id.localeCompare(y.id));
   if (allowlist.length < CAPS.exercisesPerDay.min) return json({ error: 'not enough safe exercises for this profile' }, 422);
 
   let row: Record<string, unknown>;
@@ -73,7 +96,8 @@ Deno.serve(async (req) => {
     let plan: Plan | null = null;
     let note = FALLBACK_NOTE;
     let source: 'ai' | 'fallback' = 'fallback';
-    if (Deno.env.get('ANTHROPIC_API_KEY')) {
+    // ponytail: together mode skips the AI so both buddies get the identical rule-built week 1.
+    if (!together && Deno.env.get('ANTHROPIC_API_KEY')) {
       for (let attempt = 0; attempt < 2 && !plan; attempt++) {
         try {
           const out = await askClaude(profile, allowlist);
@@ -94,7 +118,6 @@ Deno.serve(async (req) => {
   }
 
   // Service role writes the plan: users can read plans but never write them directly.
-  const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const saved = await admin
     .from('plans')
     .upsert({ ...row, user_id: user.id }, { onConflict: 'user_id,week' })

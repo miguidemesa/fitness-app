@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Share, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { Body, Button, CoachBubble, Screen, Title, s } from '@/components/ui';
-import { acceptInvite, buddyStatus, confirmEmail, createInvite, isAnonymous, linkEmail, removeBuddy, setDisplayName, type BuddyState } from '@/lib/supabase';
+import { acceptInvite, buddyStatus, confirmEmail, createInvite, isAnonymous, linkEmail, removeBuddy, setDisplayName, setTogether, type BuddyState } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
 import { colors, fonts } from '@/theme';
 
@@ -76,6 +76,22 @@ export default function Buddy() {
             <Text style={s.meta}>
               🔥 {status.streak} in a row. Each of you follows your own days. It breaks only if someone misses their own day.
             </Text>
+          </View>
+          <View style={[s.card, { padding: 16, gap: 8 }]}>
+            <Text style={{ fontFamily: fonts.bold, fontSize: 16, color: colors.ink }}>Train together</Text>
+            <Body>
+              {status.together === 'on'
+                ? `On. Your next plan uses moves that are safe and doable for both you and ${status.name}. If one of you feels pain, only that person's copy changes.`
+                : status.together === 'waiting'
+                  ? `Waiting for ${status.name} to turn it on too.`
+                  : 'Follow the same plan. Moves are chosen around both your equipment and both your protected areas, so some moves may be left out for you.'}
+            </Body>
+            <Button
+              variant={status.iAgreed ? 'ghost' : 'primary'}
+              label={status.iAgreed ? 'Turn off' : 'Turn on'}
+              disabled={busy}
+              onPress={() => run(() => setTogether(!status.iAgreed))}
+            />
           </View>
           <Body>{status.name} sees only your name, your streak and your last workout day. Never your health answers or pain.</Body>
           <Button
