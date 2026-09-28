@@ -148,7 +148,7 @@ function Rest({ onDone }: { onDone: () => void }) {
     if (left <= 0) return onDone();
     const t = setTimeout(() => setLeft((n) => n - 1), 1000);
     return () => clearTimeout(t);
-  }, [left]);
+  }, [left, onDone]);
   return (
     <Screen
       footer={
