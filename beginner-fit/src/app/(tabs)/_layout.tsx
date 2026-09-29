@@ -28,9 +28,9 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf="chart.bar" md="bar_chart" />
         <NativeTabs.Trigger.Label>Progress</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="buddy">
-        <NativeTabs.Trigger.Icon sf="person.2" md="group" />
-        <NativeTabs.Trigger.Label>Buddy</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="profile">
+        <NativeTabs.Trigger.Icon sf="person.crop.circle" md="account_circle" />
+        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

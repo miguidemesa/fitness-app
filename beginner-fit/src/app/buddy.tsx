@@ -1,28 +1,23 @@
+import * as Linking from 'expo-linking';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Share, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { Body, Button, CoachBubble, Screen, Title, s } from '@/components/ui';
-import { acceptInvite, buddyStatus, confirmEmail, createInvite, isAnonymous, linkEmail, removeBuddy, setDisplayName, setTogether, type BuddyState } from '@/lib/supabase';
+import { Alert, Share, Text, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import { Body, Button, CoachBubble, Field, Screen, Title, fail, s } from '@/components/ui';
+import { acceptInvite, buddyStatus, createInvite, removeBuddy, setDisplayName, setTogether, type BuddyState } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
 import { colors, fonts } from '@/theme';
 
-function Field(props: TextInputProps) {
-  return (
-    <TextInput
-      placeholderTextColor={colors.muted}
-      autoCapitalize="none"
-      style={[s.option, { fontFamily: fonts.bold, fontSize: 17, color: colors.ink, minHeight: 52 }]}
-      {...props}
-    />
-  );
-}
-const fail = (e: unknown) => Alert.alert('That did not work', e instanceof Error ? e.message : 'Check your connection and try again.');
+/** Opens this screen with the code filled in. capy://buddy?code=… in a store build; an exp:// link in Expo Go. */
+const inviteLink = (code: string) => Linking.createURL('buddy', { queryParams: { code } });
 
-/** One accountability buddy: shared streak, and nothing else about each other. */
+/** One accountability buddy: shared streak, and nothing else about each other. Opened from Profile or an invite link. */
 export default function Buddy() {
-  const { draft, update } = useProfile();
+  const { ready, draft, update } = useProfile();
+  const params = useLocalSearchParams<{ code?: string }>();
   const [status, setStatus] = useState<BuddyState | null>(null);
   const [name, setName] = useState(draft.displayName ?? '');
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState((params.code ?? '').toUpperCase().slice(0, 8));
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(() => buddyStatus().then(setStatus).catch(() => setStatus({ state: 'none' })), []);
@@ -48,6 +43,9 @@ export default function Buddy() {
     update({ displayName: name.trim() });
   };
 
+  if (!ready) return null;
+  // Scanned an invite before setting up? Onboarding first. ponytail: the code is dropped; scan again after.
+  if (!draft.disclaimerAcceptedAt) return <Redirect href="/onboarding" />;
   if (!status) {
     return (
       <Screen>
@@ -109,11 +107,19 @@ export default function Buddy() {
       ) : (
         <>
           <CoachBubble>Train with a friend. You each follow your own days, and the streak grows when you both do yours.</CoachBubble>
-          <Body style={{ fontFamily: fonts.bold, color: colors.ink }}>Your first name</Body>
-          <Field value={name} onChangeText={setName} placeholder="First name" autoCapitalize="words" maxLength={30} />
+          {draft.displayName ? null : (
+            <>
+              <Body style={{ fontFamily: fonts.bold, color: colors.ink }}>Your first name</Body>
+              <Field value={name} onChangeText={setName} placeholder="First name" autoCapitalize="words" maxLength={30} />
+            </>
+          )}
           {status.state === 'invited' ? (
-            <View style={[s.card, { padding: 16, gap: 8, alignItems: 'center' }]}>
-              <Text style={s.meta}>Your invite code</Text>
+            <View style={[s.card, { padding: 16, gap: 10, alignItems: 'center' }]}>
+              <Text style={s.meta}>Let your friend scan this with their phone camera</Text>
+              <View accessible accessibilityLabel={`QR code for invite ${status.code}`} style={{ padding: 12, backgroundColor: '#FFFFFF', borderRadius: 16 }}>
+                <QRCode value={inviteLink(status.code)} size={200} color={colors.ink} backgroundColor="#FFFFFF" />
+              </View>
+              <Text style={s.meta}>Or they can type your code</Text>
               <Text selectable style={{ fontFamily: fonts.display, fontSize: 40, letterSpacing: 4, color: colors.ink }}>
                 {status.code}
               </Text>
@@ -123,7 +129,7 @@ export default function Buddy() {
                 onPress={() =>
                   run(async () => {
                     await saveName();
-                    await Share.share({ message: `Train with me on Capy! Open the Buddy tab and enter this code: ${status.code}` });
+                    await Share.share({ message: `Train with me on Capy! Tap to join: ${inviteLink(status.code)}\nOr open Buddy in Capy and enter: ${status.code}` });
                   })
                 }
               />
@@ -144,7 +150,7 @@ export default function Buddy() {
           <Body style={{ fontFamily: fonts.bold, color: colors.ink, marginTop: 8 }}>Got a code from a friend?</Body>
           <Field value={code} onChangeText={(t) => setCode(t.toUpperCase())} placeholder="8-letter code" autoCapitalize="characters" maxLength={8} />
           <Button
-            variant="ghost"
+            variant={params.code ? 'primary' : 'ghost'}
             label="Join"
             disabled={busy || code.trim().length < 8}
             onPress={() =>
@@ -157,66 +163,6 @@ export default function Buddy() {
           />
         </>
       )}
-      <Account />
     </Screen>
-  );
-}
-
-/** Turns the anonymous account into an email one, so progress survives a new phone. */
-function Account() {
-  const [anon, setAnon] = useState<boolean | null>(null);
-  const [email, setEmail] = useState('');
-  const [token, setToken] = useState('');
-  const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    isAnonymous().then(setAnon);
-  }, []);
-
-  if (anon === null) return null;
-  if (!anon) return <Body style={s.hint}>Your progress is saved to your email.</Body>;
-
-  const go = async (fn: () => Promise<void>) => {
-    setBusy(true);
-    try {
-      await fn();
-    } catch (e) {
-      fail(e);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <View style={[s.card, { padding: 16, gap: 10, marginTop: 8 }]}>
-      <Text style={{ fontFamily: fonts.bold, fontSize: 16, color: colors.ink }}>Save your progress</Text>
-      <Body>Add your email so a new phone doesn't mean starting over. No password.</Body>
-      <Field value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoComplete="email" editable={!sent} />
-      {sent ? (
-        <>
-          <Field value={token} onChangeText={setToken} placeholder="Code from the email" keyboardType="number-pad" maxLength={8} />
-          <Button
-            label="Confirm"
-            disabled={busy || token.trim().length < 6}
-            onPress={() =>
-              go(async () => {
-                await confirmEmail(email, token);
-                setAnon(false);
-              })
-            }
-          />
-        </>
-      ) : (
-        <Button
-          label="Send me a code"
-          disabled={busy || !email.includes('@')}
-          onPress={() =>
-            go(async () => {
-              await linkEmail(email);
-              setSent(true);
-            })
-          }
-        />
-      )}
-    </View>
   );
 }

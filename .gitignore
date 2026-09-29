@@ -17,3 +17,8 @@ build/
 .agents/
 skills-lock.json
 CLAUDE.md
+
+# AI tooling docs and design-skill output (kept local)
+AGENTS.md
+PRODUCT.md
+.impeccable/

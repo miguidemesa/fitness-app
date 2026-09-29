@@ -191,11 +191,32 @@ export async function removeBuddy(): Promise<void> {
   if (error) throw error;
 }
 
-/** True until the user links an email. */
-export async function isAnonymous(): Promise<boolean> {
-  if (!supabase) return true;
+/** The saved email, or null while the account is still anonymous. */
+export async function accountEmail(): Promise<string | null> {
+  if (!supabase) return null;
   const { data } = await supabase.auth.getSession();
-  return !!data.session?.user.is_anonymous;
+  const user = data.session?.user;
+  return user && !user.is_anonymous ? (user.email ?? null) : null;
+}
+
+/** Sign in on a new phone, step 1: emails a code to an existing account. ponytail: needs {{ .Token }} in the "Magic Link" template in the Supabase dashboard. */
+export async function sendSignInCode(email: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: false } });
+  if (error) throw error;
+}
+
+/** Step 2: the code from the email signs in; the app then reloads that account's plan and history. */
+export async function verifySignInCode(email: string, token: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: token.trim(), type: 'email' });
+  if (error) throw error;
+}
+
+export async function signOut(): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 }
 
 /** Step 1 of saving progress: emails a code. ponytail: needs {{ .Token }} in the "Change Email Address" template in the Supabase dashboard. */

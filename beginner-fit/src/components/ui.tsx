@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type TextProps } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps, type TextProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { CapyAvatar, type Mood } from '@/components/capy';
@@ -43,6 +43,19 @@ export function Button({ label, onPress, disabled, variant = 'primary' }: { labe
     </Pressable>
   );
 }
+
+export function Field(props: TextInputProps) {
+  return (
+    <TextInput
+      placeholderTextColor={colors.muted}
+      autoCapitalize="none"
+      style={[s.option, { fontFamily: fonts.bold, fontSize: 17, color: colors.ink, minHeight: 52 }]}
+      {...props}
+    />
+  );
+}
+
+export const fail = (e: unknown) => Alert.alert('That did not work', e instanceof Error ? e.message : 'Check your connection and try again.');
 
 function Check({ color }: { color: string }) {
   return (

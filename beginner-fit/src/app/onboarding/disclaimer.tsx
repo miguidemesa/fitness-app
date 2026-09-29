@@ -22,9 +22,11 @@ export default function Disclaimer() {
     setSaving(true);
     setError(null);
     try {
-      if (await saveProfile(accepted)) await setPlan(await generatePlan());
+      const saved = await saveProfile(accepted);
+      if (saved) await setPlan(await generatePlan());
       update({ disclaimerAcceptedAt: accepted.disclaimerAcceptedAt });
-      router.replace('/today');
+      // Name and email come last: the plan is ready, so they're not a hurdle before it.
+      router.replace(saved ? '/onboarding/you' : '/today');
     } catch {
       setError("Couldn't build your plan. Check your internet connection and try again.");
     } finally {

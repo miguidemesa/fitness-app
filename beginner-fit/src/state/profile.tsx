@@ -46,6 +46,8 @@ type Ctx = {
   /** Every logged move, oldest first. */
   logs: LogEntry[];
   addLogs: (logs: LogEntry[]) => void;
+  /** Re-reads the signed-in account (after signing in on a new phone). False if it never finished onboarding. */
+  reload: () => Promise<boolean>;
 };
 const ProfileContext = createContext<Ctx | null>(null);
 
@@ -62,20 +64,25 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setPlanState(p);
   };
 
+  const apply = async (saved: Awaited<ReturnType<typeof loadSaved>>) => {
+    if (!saved) return false;
+    update(saved.draft);
+    setLogs(saved.logs);
+    if (saved.plan) await setPlan(saved.plan);
+    return true;
+  };
+  const reload = async () => apply(await loadSaved());
+
   useEffect(() => {
     loadSaved()
-      .then(async (saved) => {
-        if (!saved) return;
-        update(saved.draft);
-        setLogs(saved.logs);
-        if (saved.plan) await setPlan(saved.plan);
-      })
+      .then(apply)
       .catch(() => {}) // offline on launch: start fresh; answers are re-saved at the disclaimer
       .finally(() => setReady(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on launch
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ ready, draft, update, reset: () => { setDraft(START); setPlanState(null); setLogs([]); }, plan, exercises, setPlan, logs, addLogs: (l) => setLogs((prev) => [...prev, ...l]) }}>{children}</ProfileContext.Provider>
+    <ProfileContext.Provider value={{ ready, draft, update, reset: () => { setDraft(START); setPlanState(null); setLogs([]); }, plan, exercises, setPlan, logs, addLogs: (l) => setLogs((prev) => [...prev, ...l]), reload }}>{children}</ProfileContext.Provider>
   );
 }
 

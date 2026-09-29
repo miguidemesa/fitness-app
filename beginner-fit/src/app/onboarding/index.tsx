@@ -17,6 +17,7 @@ export default function Welcome() {
         <CoachBubble>Hi! I'm Capy. I'll ask a few easy questions. There are no wrong answers.</CoachBubble>
         <View style={{ flex: 1 }} />
         <Button label="Get started" onPress={() => router.push('/onboarding/goal')} />
+        <Button variant="ghost" label="I already have an account" onPress={() => router.push('/onboarding/signin')} />
         <Text style={styles.small}>About 3 minutes · No sign-up to try</Text>
       </SafeAreaView>
     </View>

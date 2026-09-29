@@ -1,10 +1,6 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { CapyAvatar } from '@/components/capy';
-import { ScheduleCard } from '@/components/reminders';
-import { Body, Button, CoachBubble, Screen, Title, s } from '@/components/ui';
-import { deleteAccount } from '@/lib/supabase';
+import { Body, CoachBubble, Screen, Title, s } from '@/components/ui';
 import { useProfile } from '@/state/profile';
 import { colors, fonts } from '@/theme';
 import { stageFor, weeklyStreak } from '@/utils/progress';
@@ -21,32 +17,6 @@ function Stat({ value, label }: { value: number; label: string }) {
   );
 }
 
-/** Permanent delete, behind a confirmation. Required by the app stores. */
-function DeleteData() {
-  const { reset } = useProfile();
-  const [busy, setBusy] = useState(false);
-  const confirm = () =>
-    Alert.alert('Delete all my data?', 'This removes your plan and workout history for good. You can start again any time.', [
-      { text: 'Keep my data', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await deleteAccount();
-            reset();
-            router.replace('/onboarding');
-          } catch {
-            Alert.alert("Couldn't delete", 'Check your connection and try again.');
-            setBusy(false);
-          }
-        },
-      },
-    ]);
-  return <Button variant="ghost" label={busy ? 'Deleting…' : 'Delete my data'} disabled={busy} onPress={confirm} />;
-}
-
 /** Logged workouts, newest first: one card per plan day. */
 export default function Progress() {
   const { plan, logs } = useProfile();
@@ -61,8 +31,6 @@ export default function Progress() {
         <Text style={s.meta}>Week {plan?.week ?? 1}</Text>
         <Title>Progress</Title>
         <CoachBubble>Nothing logged yet. After your first workout, you'll see how each move felt here.</CoachBubble>
-        <ScheduleCard />
-        <DeleteData />
       </Screen>
     );
   }
@@ -80,8 +48,6 @@ export default function Progress() {
       {sessions.map((moves) => (
         <Session key={`${moves[0].planId}:${moves[0].day}`} moves={moves} />
       ))}
-      <ScheduleCard />
-      <DeleteData />
     </Screen>
   );
 }
