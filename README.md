@@ -36,7 +36,7 @@ See [SETUP.md](SETUP.md). In short:
 ```bash
 cd beginner-fit
 npm install
-cp .env.example .env    # add your Supabase URL and publishable key
+# create .env with EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY (see SETUP.md)
 npx expo start
 ```
 

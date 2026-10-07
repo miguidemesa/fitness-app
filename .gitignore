@@ -10,7 +10,6 @@ build/
 # secrets — never commit keys
 .env
 .env.*
-!.env.example
 
 # Claude and agent skills/config (kept local)
 .claude/

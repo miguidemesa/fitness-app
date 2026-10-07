@@ -9,7 +9,7 @@ import type { LogEntry, PlanItem } from '@/utils/types';
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY; // publishable (or legacy anon) key — public by design
 
-/** null until .env has the project URL and publishable key (see .env.example). */
+/** null until .env has the project URL and publishable key (see SETUP.md). */
 export const supabase =
   url && anonKey
     ? createClient(url, anonKey, {
