@@ -34,6 +34,3 @@ cd promo-video
 npm install
 npm run dev    # Remotion studio
 ```
-
-## Not in the repo (kept local)
-`.env`, `.claude/`, `.agents/`, `skills-lock.json`, `CLAUDE.md`, `AGENTS.md`, `PRODUCT.md`, `.impeccable/`.
