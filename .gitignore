@@ -10,15 +10,25 @@ build/
 # secrets — never commit keys
 .env
 .env.*
-!.env.example
 
-# Claude and agent skills/config (kept local)
+# Local tooling config
 .claude/
 .agents/
 skills-lock.json
 CLAUDE.md
 
-# AI tooling docs and design-skill output (kept local)
+# Local tooling notes
 AGENTS.md
 PRODUCT.md
 .impeccable/
+GEMINI.md
+.cursor/
+.cursorrules
+.windsurf/
+.windsurfrules
+.aider*
+.codex/
+.gemini/
+.superpowers/
+docs/superpowers/
+.github/copilot-instructions.md

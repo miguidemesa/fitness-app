@@ -10,10 +10,16 @@
 ```bash
 cd beginner-fit
 npm install
-cp .env.example .env    # then fill in your Supabase URL + publishable key
 npx expo start
 ```
-Scan the QR code with Expo Go. Publishable key only; never put a `service_role` key in `.env`.
+Create `beginner-fit/.env` before starting:
+
+```bash
+EXPO_PUBLIC_SUPABASE_URL=<your Supabase project URL>
+EXPO_PUBLIC_SUPABASE_KEY=<your publishable key>
+```
+
+Scan the QR code with Expo Go. Use the publishable key only; never put a `service_role` key in `.env`.
 
 ## Checks
 ```bash
@@ -28,6 +34,3 @@ cd promo-video
 npm install
 npm run dev    # Remotion studio
 ```
-
-## Not in the repo (kept local)
-`.env`, `.claude/`, `.agents/`, `skills-lock.json`, `CLAUDE.md`, `AGENTS.md`, `PRODUCT.md`, `.impeccable/`.
