@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fromLogRow, nextDay, stageFor, toWorkoutLog, weeklyStreak } from './progress.ts';
+import { fromLogRow, fromSessionRow, nextDay, stageFor, toWorkoutLog, weeklyStreak } from './progress.ts';
 
 const row = (day: number, over = {}) =>
   fromLogRow({ plan_id: 'p1', day, exercise_id: 'squat', logged_on: '2026-09-26', completed: 'all', difficulty: 2, pain: false, pain_area: null, ...over });
@@ -37,4 +37,20 @@ test('stageFor: thresholds and next stage', () => {
   assert.equal(stageFor(4).stage.name, 'Athlete');
   assert.equal(stageFor(3).next?.name, 'Athlete');
   assert.equal(stageFor(99).next, null);
+});
+
+test('fromLogRow: keeps logged sets, and older rows without them read as null', () => {
+  const sets = [{ reps: 10, weightKg: 8, done: true }];
+  assert.deepEqual(row(0, { sets }).sets, sets);
+  assert.equal(row(0).sets, null);
+});
+
+test('fromSessionRow: camelCases a workout_sessions row', () => {
+  assert.deepEqual(fromSessionRow({ plan_id: 'p1', day: 2, logged_on: '2026-10-09', seconds: 1440, note: null }), {
+    planId: 'p1',
+    day: 2,
+    loggedOn: '2026-10-09',
+    seconds: 1440,
+    note: null,
+  });
 });

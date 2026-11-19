@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Text } from 'react-native';
-import { Body, Button, CoachBubble, Field, Screen, Title } from '@/components/ui';
+import { StyleSheet, Text, TextInput } from 'react-native';
+import { CapyFigure } from '@/components/capy';
+import { Enter } from '@/components/motion';
+import { Body, Button, ErrorText, Field, Screen, Tag } from '@/components/ui';
 import { confirmEmail, linkEmail, setDisplayName } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
-import { colors, fonts } from '@/theme';
+import { colors, fonts, space, type } from '@/theme';
 
 /** Last onboarding step: a name (required, buddies see it) and an email (optional, keeps progress safe). */
 export default function You() {
@@ -34,7 +36,7 @@ export default function You() {
     run(async () => {
       await setDisplayName(name);
       update({ displayName: name.trim() });
-      router.replace('/today');
+      router.replace('/home');
     }, "Couldn't save your name. Check your connection and try again.");
   const confirm = async () => {
     if (await run(() => confirmEmail(email, token), "That code didn't work. Check it and try again.")) await finish();
@@ -52,11 +54,7 @@ export default function You() {
     <Screen
       footer={
         <>
-          {error ? (
-            <Text accessibilityRole="alert" style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.pain, textAlign: 'center' }}>
-              {error}
-            </Text>
-          ) : null}
+          <ErrorText>{error}</ErrorText>
           {sent ? (
             <Button label={busy ? 'Saving…' : 'Confirm and finish'} disabled={busy || !named || token.trim().length < 6} onPress={confirm} />
           ) : wantsEmail ? (
@@ -64,18 +62,42 @@ export default function You() {
           ) : (
             <Button label={busy ? 'Saving…' : 'Finish'} disabled={busy || !named} onPress={finish} />
           )}
-          {wantsEmail || sent ? <Button variant="ghost" label="Skip email for now" disabled={busy || !named} onPress={finish} /> : null}
+          {wantsEmail || sent ? <Button variant="text" label="Skip email for now" disabled={busy || !named} onPress={finish} /> : null}
         </>
       }
     >
-      <Title>Almost done</Title>
-      <CoachBubble>Your plan is ready! What should I call you?</CoachBubble>
-      <Field value={name} onChangeText={setName} placeholder="Your name" autoCapitalize="words" autoComplete="given-name" maxLength={30} />
-      <Body style={{ fontFamily: fonts.bold, color: colors.ink, marginTop: 8 }}>Email (optional)</Body>
-      <Body>Keeps your progress safe if you change phones. No password: we'll email you a code.</Body>
-      <Field value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoComplete="email" editable={!sent} />
-      {sent ? <Field value={token} onChangeText={setToken} placeholder="Code from the email" keyboardType="number-pad" autoComplete="one-time-code" maxLength={8} /> : null}
-      <Body style={{ fontSize: 14, color: colors.muted }}>Your buddy sees only your name, never your health answers or pain.</Body>
+      <Enter index={0} style={{ alignItems: 'center', gap: space.s, marginTop: space.xl }}>
+        <CapyFigure size={120} mood="cheer" hopKey={named} />
+        <Tag>Your plan is ready</Tag>
+        <Text accessibilityRole="header" style={[type.title, { textAlign: 'center' }]}>
+          What should Capy call you?
+        </Text>
+      </Enter>
+      <Enter index={1}>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder="Your name"
+          placeholderTextColor={colors.line}
+          autoCapitalize="words"
+          autoComplete="given-name"
+          maxLength={30}
+          autoFocus
+          accessibilityLabel="Your name"
+          style={styles.name}
+        />
+      </Enter>
+      <Enter index={2} style={{ gap: space.s, marginTop: space.l }}>
+        <Text style={type.label}>Email (optional)</Text>
+        <Body style={{ fontSize: 15 }}>Keeps your progress safe if you change phones. No password: Capy emails you a code.</Body>
+        <Field value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoComplete="email" editable={!sent} />
+        {sent ? <Field value={token} onChangeText={setToken} placeholder="Code from the email" keyboardType="number-pad" autoComplete="one-time-code" maxLength={8} /> : null}
+        <Text style={type.caption}>Your buddy sees only your name, never your health answers or pain.</Text>
+      </Enter>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  name: { fontFamily: fonts.display, fontSize: 40, letterSpacing: -0.8, color: colors.ink, textAlign: 'center', paddingVertical: space.m, borderBottomWidth: 2, borderBottomColor: colors.ink },
+});

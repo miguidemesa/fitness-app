@@ -1,33 +1,41 @@
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, CoachBubble } from '@/components/ui';
-import { colors, fonts } from '@/theme';
+import { CapyFigure } from '@/components/capy';
+import { Enter } from '@/components/motion';
+import { Button } from '@/components/ui';
+import { colors, fonts, space, type } from '@/theme';
 
+/** First screen: yuzu, Capy waving, one line, one button. */
 export default function Welcome() {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.ground }}>
-      <SafeAreaView edges={['top']} style={styles.hero}>
-        <Text accessibilityRole="header" style={styles.title}>
-          Start where you are.
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <Enter index={0} style={{ marginTop: space.xxl, gap: space.l }}>
+        <Text style={styles.mark}>
+          capy<Text style={{ color: colors.paper }}>.</Text>
         </Text>
-        <Text style={styles.lede}>A coach for people who've never set foot in a gym. No jargon, no pressure, just your first week, planned for you.</Text>
-      </SafeAreaView>
-      <SafeAreaView edges={['bottom']} style={styles.bottom}>
-        <CoachBubble>Hi! I'm Capy. I'll ask a few easy questions. There are no wrong answers.</CoachBubble>
-        <View style={{ flex: 1 }} />
-        <Button label="Get started" onPress={() => router.push('/onboarding/goal')} />
-        <Button variant="ghost" label="I already have an account" onPress={() => router.push('/onboarding/signin')} />
-        <Text style={styles.small}>About 3 minutes · No sign-up to try</Text>
-      </SafeAreaView>
-    </View>
+        <Text accessibilityRole="header" style={styles.title}>
+          start where{'\n'}
+          <Text style={{ fontFamily: fonts.displayMedium }}>you are.</Text>
+        </Text>
+        <Text style={[type.body, { color: colors.ink, fontSize: 17, lineHeight: 26, maxWidth: 320 }]}>
+          A coach for people who've never set foot in a gym. No jargon, no pressure. Just your first week, planned for you.
+        </Text>
+      </Enter>
+      <Enter index={1} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <CapyFigure size={220} mood="hello" band={colors.ink} wave />
+      </Enter>
+      <Enter index={2} style={{ gap: space.s }}>
+        <Button label="Get started" tall onPress={() => router.push('/onboarding/goal')} />
+        <Button variant="text" label="I already have an account" onPress={() => router.push('/onboarding/signin')} />
+        <Text style={[type.caption, { color: colors.ink, textAlign: 'center' }]}>About 3 minutes · No sign-up to try</Text>
+      </Enter>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { backgroundColor: colors.ink, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, paddingHorizontal: 24, paddingBottom: 32, paddingTop: 40, gap: 16 },
-  title: { fontFamily: fonts.display, fontSize: 64, lineHeight: 60, textTransform: 'uppercase', color: '#FFFFFF', marginTop: 40 },
-  lede: { fontFamily: fonts.body, fontSize: 17, lineHeight: 26, color: '#D4D3CE', maxWidth: 320 },
-  bottom: { flex: 1, padding: 20, gap: 14 },
-  small: { fontFamily: fonts.bold, fontSize: 13, color: colors.muted, textAlign: 'center' },
+  screen: { flex: 1, backgroundColor: colors.yuzu, paddingHorizontal: space.gutter, paddingBottom: space.s },
+  mark: { fontFamily: fonts.displayHeavy, fontSize: 26, letterSpacing: -0.6, color: colors.ink },
+  title: { fontFamily: fonts.displayHeavy, fontSize: 56, lineHeight: 56, letterSpacing: -1.6, color: colors.ink },
 });

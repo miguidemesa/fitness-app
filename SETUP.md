@@ -15,6 +15,14 @@ npx expo start
 ```
 Scan the QR code with Expo Go. Publishable key only; never put a `service_role` key in `.env`.
 
+## Database
+After pulling new migrations in `beginner-fit/supabase/migrations`, deploy them before using the new build:
+```bash
+cd beginner-fit
+supabase db push
+```
+`20261009000000_sets_and_sessions.sql` adds per-set logging and workout durations. Until it's deployed the app still saves workouts, just without sets or durations.
+
 ## Checks
 ```bash
 npm run typecheck

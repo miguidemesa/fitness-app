@@ -1,12 +1,15 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
-import { Body, Screen, StepHeader, Title, s } from '@/components/ui';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, { SlideInRight, SlideOutLeft } from 'react-native-reanimated';
+import { Icon } from '@/components/icon';
+import { Step } from '@/components/onboarding';
+import { Chip, Tag } from '@/components/ui';
 import { useProfile } from '@/state/profile';
-import { colors, fonts } from '@/theme';
+import { colors, motion, radius, space, type } from '@/theme';
 import { SCREENING_QUESTIONS, needsInjuryAreas } from '@/utils/screening';
 
+/** Seven PAR-Q+ questions, dealt one card at a time. Deliberately calm: no reactions to any answer. */
 export default function Health() {
   const { draft, update } = useProfile();
   const [i, setI] = useState(0);
@@ -25,40 +28,35 @@ export default function Health() {
   };
 
   return (
-    <Screen>
-      <StepHeader step={4} total={4} onBack={() => (i > 0 ? setI(i - 1) : router.back())} />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <Title>Health check</Title>
-        <Text style={{ fontFamily: fonts.display, fontSize: 24, color: colors.ink }} accessibilityLabel={`Question ${i + 1} of ${SCREENING_QUESTIONS.length}`}>
-          {i + 1}
-          <Text style={{ color: colors.muted }}>/{SCREENING_QUESTIONS.length}</Text>
-        </Text>
-      </View>
-      <View style={[s.card, { padding: 20, gap: 20 }]}>
-        <Text style={{ fontFamily: fonts.bold, fontSize: 21, lineHeight: 28, color: colors.ink }}>{q.text}</Text>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {[
-            ['Yes', true],
-            ['No', false],
-          ].map(([label, value]) => (
-            <Pressable
-              key={String(label)}
-              accessibilityRole="button"
-              onPress={() => answer(value as boolean)}
-              style={({ pressed }) => [s.option, { flex: 1, justifyContent: 'center', minHeight: 60 }, (pressed || draft.answers[q.id] === value) && s.optionOn]}
-            >
-              <Text style={{ fontFamily: fonts.bold, fontSize: 18, color: colors.ink }}>{label as string}</Text>
-            </Pressable>
-          ))}
+    <Step
+      step={4}
+      title="A quick health check"
+      subtitle="Capy asks everyone these, so your plan is safe."
+      onBack={() => (i > 0 ? setI(i - 1) : router.back())}
+      footer={
+        <View style={{ flexDirection: 'row', gap: space.s, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="lock" size={14} color={colors.muted} />
+          <Text style={type.caption}>Your answers stay private.</Text>
         </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 4 }}>
-        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 3 }}>
-          <Rect x="5" y="11" width="14" height="9" rx="2" />
-          <Path d="M8 11V8a4 4 0 0 1 8 0v3" />
-        </Svg>
-        <Body style={{ flex: 1, fontSize: 14, color: colors.muted }}>Capy asks everyone these so your plan is safe. Your answers stay private.</Body>
-      </View>
-    </Screen>
+      }
+    >
+      <Animated.View key={q.id} entering={SlideInRight.duration(motion.base)} exiting={SlideOutLeft.duration(160)} style={styles.card}>
+        <Tag>
+          Question {i + 1} of {SCREENING_QUESTIONS.length}
+        </Tag>
+        <Text accessibilityRole="header" style={[type.heading, { lineHeight: 30 }]}>
+          {q.text}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: space.s, marginTop: space.s }}>
+          <Chip label="Yes" selected={draft.answers[q.id] === true} onPress={() => answer(true)} style={styles.answer} />
+          <Chip label="No" selected={draft.answers[q.id] === false} onPress={() => answer(false)} style={styles.answer} />
+        </View>
+      </Animated.View>
+    </Step>
   );
 }
+
+const styles = StyleSheet.create({
+  card: { backgroundColor: colors.paper, borderRadius: radius.photo, borderCurve: 'continuous', padding: space.xl, gap: space.m, marginTop: space.l },
+  answer: { flex: 1, minHeight: 64 },
+});

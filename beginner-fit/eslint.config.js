@@ -5,7 +5,8 @@ const expoConfig = require("eslint-config-expo/flat");
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ["dist/*"],
+    // Vendored third-party code keeps its upstream style.
+    ignores: ["dist/*", "src/vendor/*"],
   },
   // Plain apostrophes are fine in React Native <Text>.
   { rules: { "react/no-unescaped-entities": "off" } }

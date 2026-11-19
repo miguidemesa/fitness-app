@@ -3,10 +3,10 @@ import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Share, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Body, Button, CoachBubble, Field, Screen, Title, fail, s } from '@/components/ui';
+import { Body, Button, Card, CoachLine, Field, Screen, Tag, fail } from '@/components/ui';
 import { acceptInvite, buddyStatus, createInvite, removeBuddy, setDisplayName, setTogether, type BuddyState } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
-import { colors, fonts } from '@/theme';
+import { colors, space, type } from '@/theme';
 
 /** Opens this screen with the code filled in. capy://buddy?code=… in a store build; an exp:// link in Expo Go. */
 const inviteLink = (code: string) => Linking.createURL('buddy', { queryParams: { code } });
@@ -49,34 +49,33 @@ export default function Buddy() {
   if (!status) {
     return (
       <Screen>
-        <Title>Buddy</Title>
+        <CoachLine>Checking on your buddy…</CoachLine>
       </Screen>
     );
   }
 
   return (
     <Screen>
-      <Title>Buddy</Title>
       {status.state === 'paired' ? (
         <>
-          <CoachBubble mood="cheer">
+          <CoachLine mood="cheer">
             {status.streak
               ? `You and ${status.name} are on a ${status.streak}-workout streak.`
               : `You and ${status.name} start fresh. The streak builds when you both do your planned days.`}
-          </CoachBubble>
-          <View style={[s.card, { padding: 16, gap: 4 }]}>
-            <Text style={{ fontFamily: fonts.display, fontSize: 28, color: colors.ink }}>{status.name}</Text>
+          </CoachLine>
+          <Card style={{ padding: space.l, gap: space.xs }}>
+            <Text style={type.title}>{status.name}</Text>
             <Body>
               {status.lastWorkoutOn
                 ? `Last workout: ${new Date(`${status.lastWorkoutOn}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}`
                 : 'No workouts yet'}
             </Body>
-            <Text style={s.meta}>
-              🔥 {status.streak} in a row. Each of you follows your own days. It breaks only if someone misses their own day.
+            <Text style={type.caption}>
+              {status.streak} in a row. Each of you follows your own days. It breaks only if someone misses their own day.
             </Text>
-          </View>
-          <View style={[s.card, { padding: 16, gap: 8 }]}>
-            <Text style={{ fontFamily: fonts.bold, fontSize: 16, color: colors.ink }}>Train together</Text>
+          </Card>
+          <Card style={{ padding: space.l, gap: space.s }}>
+            <Text style={type.label}>Train together</Text>
             <Body>
               {status.together === 'on'
                 ? `On. Your next plan uses moves that are safe and doable for both you and ${status.name}. If one of you feels pain, only that person's copy changes.`
@@ -85,15 +84,15 @@ export default function Buddy() {
                   : 'Follow the same plan. Moves are chosen around both your equipment and both your protected areas, so some moves may be left out for you.'}
             </Body>
             <Button
-              variant={status.iAgreed ? 'ghost' : 'primary'}
+              variant={status.iAgreed ? 'secondary' : 'primary'}
               label={status.iAgreed ? 'Turn off' : 'Turn on'}
               disabled={busy}
               onPress={() => run(() => setTogether(!status.iAgreed))}
             />
-          </View>
+          </Card>
           <Body>{status.name} sees only your name, your streak and your last workout day. Never your health answers or pain.</Body>
           <Button
-            variant="ghost"
+            variant="text"
             label="Remove buddy"
             disabled={busy}
             onPress={() =>
@@ -106,21 +105,21 @@ export default function Buddy() {
         </>
       ) : (
         <>
-          <CoachBubble>Train with a friend. You each follow your own days, and the streak grows when you both do yours.</CoachBubble>
+          <CoachLine>Train with a friend. You each follow your own days, and the streak grows when you both do yours.</CoachLine>
           {draft.displayName ? null : (
             <>
-              <Body style={{ fontFamily: fonts.bold, color: colors.ink }}>Your first name</Body>
+              <Tag>Your first name</Tag>
               <Field value={name} onChangeText={setName} placeholder="First name" autoCapitalize="words" maxLength={30} />
             </>
           )}
           {status.state === 'invited' ? (
-            <View style={[s.card, { padding: 16, gap: 10, alignItems: 'center' }]}>
-              <Text style={s.meta}>Let your friend scan this with their phone camera</Text>
+            <Card style={{ padding: space.l, gap: space.m, alignItems: 'center' }}>
+              <Text style={type.caption}>Let your friend scan this with their phone camera</Text>
               <View accessible accessibilityLabel={`QR code for invite ${status.code}`} style={{ padding: 12, backgroundColor: '#FFFFFF', borderRadius: 16 }}>
                 <QRCode value={inviteLink(status.code)} size={200} color={colors.ink} backgroundColor="#FFFFFF" />
               </View>
-              <Text style={s.meta}>Or they can type your code</Text>
-              <Text selectable style={{ fontFamily: fonts.display, fontSize: 40, letterSpacing: 4, color: colors.ink }}>
+              <Text style={type.caption}>Or they can type your code</Text>
+              <Text selectable style={[type.display, { letterSpacing: 4 }]}>
                 {status.code}
               </Text>
               <Button
@@ -133,8 +132,8 @@ export default function Buddy() {
                   })
                 }
               />
-              <Button variant="ghost" label="Cancel invite" disabled={busy} onPress={() => run(removeBuddy)} />
-            </View>
+              <Button variant="text" label="Cancel invite" disabled={busy} onPress={() => run(removeBuddy)} />
+            </Card>
           ) : (
             <Button
               label="Invite a buddy"
@@ -147,10 +146,12 @@ export default function Buddy() {
               }
             />
           )}
-          <Body style={{ fontFamily: fonts.bold, color: colors.ink, marginTop: 8 }}>Got a code from a friend?</Body>
+          <View style={{ marginTop: space.s }}>
+            <Tag>Got a code from a friend?</Tag>
+          </View>
           <Field value={code} onChangeText={(t) => setCode(t.toUpperCase())} placeholder="8-letter code" autoCapitalize="characters" maxLength={8} />
           <Button
-            variant={params.code ? 'primary' : 'ghost'}
+            variant={params.code ? 'primary' : 'secondary'}
             label="Join"
             disabled={busy || code.trim().length < 8}
             onPress={() =>

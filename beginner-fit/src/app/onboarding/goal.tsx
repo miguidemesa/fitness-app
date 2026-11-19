@@ -1,23 +1,28 @@
 import { router } from 'expo-router';
-import { Button, CoachBubble, OptionCard, Screen, StepHeader, Title } from '@/components/ui';
+import { Step } from '@/components/onboarding';
+import { Button, OptionPill } from '@/components/ui';
 import { useProfile, type ProfileDraft } from '@/state/profile';
 
-const GOALS: { id: NonNullable<ProfileDraft['goal']>; label: string }[] = [
-  { id: 'feel_healthier', label: 'Feel healthier, more energy' },
-  { id: 'get_stronger', label: 'Get stronger' },
-  { id: 'lose_weight', label: 'Lose some weight' },
+const GOALS: { id: NonNullable<ProfileDraft['goal']>; label: string; hint: string }[] = [
+  { id: 'feel_healthier', label: 'Feel healthier', hint: 'More energy, better sleep, less stiffness.' },
+  { id: 'get_stronger', label: 'Get stronger', hint: 'Carry the shopping and take the stairs with ease.' },
+  { id: 'lose_weight', label: 'Lose some weight', hint: 'Move more, steadily. No crash anything.' },
 ];
 
 export default function Goal() {
   const { draft, update } = useProfile();
   return (
-    <Screen footer={<Button label="Continue" disabled={!draft.goal} onPress={() => router.push('/onboarding/time')} />}>
-      <StepHeader step={1} total={4} onBack={() => router.back()} />
-      <Title>What's your goal?</Title>
+    <Step
+      step={1}
+      title="What brings you here?"
+      subtitle="Any of these is a great reason. Capy shapes your plan around it."
+      capy={{ mood: draft.goal ? 'cheer' : 'hello', hopKey: draft.goal }}
+      onBack={() => router.back()}
+      footer={<Button label="Continue" disabled={!draft.goal} onPress={() => router.push('/onboarding/time')} />}
+    >
       {GOALS.map((g) => (
-        <OptionCard key={g.id} label={g.label} selected={draft.goal === g.id} onPress={() => update({ goal: g.id })} />
+        <OptionPill key={g.id} label={g.label} hint={g.hint} selected={draft.goal === g.id} onPress={() => update({ goal: g.id })} />
       ))}
-      <CoachBubble>Any of these is a great reason. I'll shape your plan around it.</CoachBubble>
-    </Screen>
+    </Step>
   );
 }

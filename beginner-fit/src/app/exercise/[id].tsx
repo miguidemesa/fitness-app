@@ -1,42 +1,50 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
-import { Body, Screen, Title, s } from '@/components/ui';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ExerciseLoop } from '@/components/exercise-loop';
+import { Enter } from '@/components/motion';
+import { Card } from '@/components/ui';
 import { useProfile } from '@/state/profile';
-import { colors, fonts } from '@/theme';
+import { colors, radius, space, type } from '@/theme';
 
-/** How to do one move: start/end photos and numbered steps from the exercise library. */
+/** How to do one move, as a native sheet: the demo playing on a loop, what it works, and numbered steps. */
 export default function ExerciseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const ex = useProfile().exercises[id];
-  const [frame, setFrame] = useState(0);
   if (!ex) return null;
 
   return (
-    <Screen>
-      <Title>{ex.name}</Title>
-      <Text style={s.meta}>
-        {ex.equipment && ex.equipment !== 'body only' ? `Uses ${ex.equipment}` : 'No equipment'} · Works your {ex.primaryMuscles.join(', ')}
-      </Text>
-      {ex.images.length ? (
-        <Pressable
-          accessibilityRole="imagebutton"
-          accessibilityLabel={`Photo ${frame + 1} of ${ex.images.length}, ${frame === 0 ? 'start' : 'end'} position. Tap for the next photo.`}
-          onPress={() => setFrame((f) => (f + 1) % ex.images.length)}
-        >
-          <Image source={{ uri: ex.images[frame] }} resizeMode="contain" style={[s.card, { width: '100%', aspectRatio: 4 / 3 }]} />
-          <Text style={[s.hint, { textAlign: 'center', marginTop: 6 }]}>{frame === 0 ? 'Start' : 'End'} position · tap to switch</Text>
-        </Pressable>
-      ) : null}
-      <View style={[s.card, { padding: 16, gap: 14 }]}>
-        {ex.instructions.map((step, i) => (
-          <View key={i} style={{ flexDirection: 'row', gap: 12 }}>
-            <Text style={{ fontFamily: fonts.bold, fontSize: 16, color: colors.accent, width: 20 }}>{i + 1}</Text>
-            <Body style={{ flex: 1 }}>{step}</Body>
-          </View>
-        ))}
+    <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ExerciseLoop images={ex.images} name={ex.name} style={styles.demo} />
+      <View style={{ gap: space.s }}>
+        <Text accessibilityRole="header" style={type.title}>
+          {ex.name}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
+          {[...ex.primaryMuscles, ex.equipment && ex.equipment !== 'body only' ? ex.equipment : 'no equipment'].map((t) => (
+            <Text key={t} style={styles.chip}>
+              {t}
+            </Text>
+          ))}
+        </View>
       </View>
-      <Body style={s.hint}>If anything hurts, stop. You can tell Capy when you log the workout.</Body>
-    </Screen>
+      <Card style={{ padding: space.l, gap: space.l }}>
+        {ex.instructions.map((step, i) => (
+          <Enter key={i} index={i} style={{ flexDirection: 'row', gap: space.m }}>
+            <View style={styles.num}>
+              <Text style={[type.label, { fontSize: 14 }]}>{i + 1}</Text>
+            </View>
+            <Text style={[type.body, { flex: 1 }]}>{step}</Text>
+          </Enter>
+        ))}
+      </Card>
+      <Text style={type.caption}>If anything hurts, stop. You can tell Capy when you log the move.</Text>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  scroll: { padding: space.gutter, paddingTop: space.xl, gap: space.l },
+  demo: { width: '100%', aspectRatio: 4 / 3, borderRadius: radius.photo, borderCurve: 'continuous' },
+  chip: { ...type.caption, color: colors.ink, textTransform: 'capitalize', backgroundColor: colors.paper, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6, overflow: 'hidden' },
+  num: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.yuzu, alignItems: 'center', justifyContent: 'center' },
+});

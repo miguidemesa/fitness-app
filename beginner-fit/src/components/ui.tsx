@@ -1,55 +1,104 @@
-import type { ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps, type TextProps } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import { Children, isValidElement, useEffect, useState, type ReactNode } from 'react';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, View, type StyleProp, type TextInputProps, type TextProps, type ViewStyle } from 'react-native';
+import Animated, { FadeIn, LinearTransition, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 import { CapyAvatar, type Mood } from '@/components/capy';
-import { colors, fonts } from '@/theme';
+import { CircleButton } from '@/components/glass';
+import { Icon, type IconName } from '@/components/icon';
+import { PressableScale } from '@/components/motion';
+import { haptic } from '@/lib/haptics';
+import { colors, fonts, motion, radius, space, type } from '@/theme';
 import { AREA_LABEL, AREAS, type Area } from '@/utils/types';
 
-export function Screen({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+type Tone = 'light' | 'yuzu' | 'night';
+const BG: Record<Tone, string> = { light: colors.porcelain, yuzu: colors.yuzu, night: colors.night };
+
+/**
+ * A scrolling page with an optional pinned footer. `tab` screens let content run under the (floating) tab bar.
+ */
+export function Screen({ children, footer, tone = 'light', tab, contentStyle }: { children: ReactNode; footer?: ReactNode; tone?: Tone; tab?: boolean; contentStyle?: StyleProp<ViewStyle> }) {
+  const edges: Edge[] = tab || footer ? ['top'] : ['top', 'bottom'];
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG[tone] }} edges={edges}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, contentStyle]}
+        contentInsetAdjustmentBehavior={tab ? 'automatic' : 'never'}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {children}
       </ScrollView>
-      {footer ? <View style={s.footer}>{footer}</View> : null}
+      {footer ? (
+        <SafeAreaView edges={['bottom']} style={styles.footer}>
+          {footer}
+        </SafeAreaView>
+      ) : null}
     </SafeAreaView>
   );
 }
 
-export function Title({ children }: { children: ReactNode }) {
+export function Title({ children, style }: { children: ReactNode; style?: StyleProp<import('react-native').TextStyle> }) {
   return (
-    <Text accessibilityRole="header" style={s.title}>
+    <Text accessibilityRole="header" style={[type.title, style]}>
       {children}
     </Text>
   );
 }
 
 export function Body({ style, ...props }: TextProps) {
-  return <Text {...props} style={[s.body, style]} />;
+  return <Text {...props} style={[type.body, style]} />;
 }
 
-export function Button({ label, onPress, disabled, variant = 'primary' }: { label: string; onPress: () => void; disabled?: boolean; variant?: 'primary' | 'ghost' }) {
-  const ghost = variant === 'ghost';
+export function Tag({ children, color = colors.muted }: { children: ReactNode; color?: string }) {
+  return <Text style={[type.tag, { color }]}>{children}</Text>;
+}
+
+export function ErrorText({ children }: { children: ReactNode }) {
+  return children ? (
+    <Text accessibilityRole="alert" style={[type.label, { fontSize: 14, color: colors.pain, textAlign: 'center' }]}>
+      {children}
+    </Text>
+  ) : null;
+}
+
+type Variant = 'primary' | 'accent' | 'secondary' | 'onDark' | 'text';
+const BUTTON: Record<Variant, { bg: string; fg: string }> = {
+  primary: { bg: colors.ink, fg: colors.paper },
+  accent: { bg: colors.yuzu, fg: colors.ink },
+  secondary: { bg: colors.mist, fg: colors.ink },
+  onDark: { bg: 'rgba(255,255,255,0.14)', fg: colors.onNight },
+  text: { bg: 'transparent', fg: colors.ink },
+};
+
+/** Pill button. `accent` (yuzu) is only for actions that move training forward: Start, Log set. */
+export function Button({ label, onPress, disabled, variant = 'primary', icon, tall, style }: { label: string; onPress: () => void; disabled?: boolean; variant?: Variant; icon?: IconName; tall?: boolean; style?: StyleProp<ViewStyle> }) {
+  const v = BUTTON[variant];
+  const off = disabled && variant !== 'text';
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [s.button, ghost ? s.ghost : s.primary, disabled && s.disabled, pressed && !disabled && { opacity: 0.85 }]}
+      feedback={variant === 'text' ? undefined : 'tap'}
+      style={[styles.button, { minHeight: tall ? 64 : 56, backgroundColor: off ? colors.mist : v.bg }, style]}
     >
-      <Text style={[s.buttonText, ghost && { color: colors.ink }, disabled && { color: colors.muted }]}>{label}</Text>
-    </Pressable>
+      {icon ? <Icon name={icon} size={18} color={off ? colors.muted : v.fg} /> : null}
+      <Text style={[type.label, { fontSize: 17, color: off || (disabled && variant === 'text') ? colors.muted : v.fg }]}>{label}</Text>
+    </PressableScale>
   );
 }
 
 export function Field(props: TextInputProps) {
+  const [focused, setFocused] = useState(false);
   return (
     <TextInput
       placeholderTextColor={colors.muted}
       autoCapitalize="none"
-      style={[s.option, { fontFamily: fonts.bold, fontSize: 17, color: colors.ink, minHeight: 52 }]}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={[styles.field, focused && { borderColor: colors.ink }]}
       {...props}
     />
   );
@@ -57,40 +106,97 @@ export function Field(props: TextInputProps) {
 
 export const fail = (e: unknown) => Alert.alert('That did not work', e instanceof Error ? e.message : 'Check your connection and try again.');
 
-function Check({ color }: { color: string }) {
+/** A selectable answer (ritual7 pattern): white pill that turns ink and reveals its hint when chosen. */
+export function OptionPill({ label, hint, selected, onPress }: { label: string; hint?: string; selected: boolean; onPress: () => void }) {
   return (
-    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M5 12.5l4.5 4.5L19 7.5" />
-    </Svg>
-  );
-}
-
-/** A selectable answer. `multi` renders a square checkbox instead of a round radio. */
-export function OptionCard({ label, hint, selected, onPress, multi }: { label: string; hint?: string; selected: boolean; onPress: () => void; multi?: boolean }) {
-  return (
-    <Pressable
-      accessibilityRole={multi ? 'checkbox' : 'radio'}
-      accessibilityState={multi ? { checked: selected } : { selected }}
+    <PressableScale
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityHint={hint}
+      scaleTo={motion.scale.card}
+      feedback="select"
       onPress={onPress}
-      style={[s.option, selected && s.optionOn]}
+      style={[styles.option, selected && { backgroundColor: colors.ink }]}
     >
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={s.optionLabel}>{label}</Text>
-        {hint ? <Text style={s.hint}>{hint}</Text> : null}
-      </View>
-      <View style={[s.mark, { borderRadius: multi ? 7 : 12 }, selected && s.markOn]}>{selected ? <Check color="#FFFFFF" /> : null}</View>
-    </Pressable>
+      <Animated.View layout={LinearTransition.duration(motion.quick)} style={{ alignItems: 'center', gap: 2 }}>
+        <Text style={[type.label, { fontSize: 17, color: selected ? colors.paper : colors.ink }]}>{label}</Text>
+        {selected && hint ? (
+          <Animated.Text entering={FadeIn.duration(motion.quick)} style={[type.caption, { color: colors.onNightMuted, textAlign: 'center' }]}>
+            {hint}
+          </Animated.Text>
+        ) : null}
+      </Animated.View>
+    </PressableScale>
   );
 }
 
-export function CoachBubble({ children, mood }: { children: ReactNode; mood?: Mood }) {
+/** White rounded list with inset hairlines between rows (toggle lists, exercise lists, session rows). */
+export function Group({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const rows = Children.toArray(children).filter(isValidElement);
   return (
-    <View style={[s.card, s.coach]}>
-      <CapyAvatar mood={mood} />
+    <View style={[styles.group, style]}>
+      {rows.map((row, i) => (
+        <View key={row.key ?? i}>
+          {/* The separator is inset; the row itself is not. */}
+          {i > 0 ? <View style={styles.hairline} /> : null}
+          {row}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** White rounded block for free content (a heading, a field, a button). For lists of rows, use Group. */
+export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  return <View style={[styles.group, style]}>{children}</View>;
+}
+
+/** A label with a native switch (iOS switch / Material switch). The whole row toggles. */
+export function ToggleRow({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (on: boolean) => void }) {
+  const flip = (on: boolean) => {
+    haptic(on ? 'toggleOn' : 'toggleOff');
+    onChange(on);
+  };
+  return (
+    <PressableScale accessibilityRole="switch" accessibilityState={{ checked: value }} scaleTo={1} onPress={() => flip(!value)} style={styles.row}>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={s.meta}>Capy · your coach</Text>
-        <Text style={s.coachText}>{children}</Text>
+        <Text style={type.label}>{label}</Text>
+        {hint ? <Text style={type.caption}>{hint}</Text> : null}
       </View>
+      <Switch
+        value={value}
+        onValueChange={flip}
+        trackColor={{ true: colors.ink, false: colors.mist }}
+        thumbColor={colors.paper}
+        ios_backgroundColor={colors.mist}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
+    </PressableScale>
+  );
+}
+
+export function Chip({ label, selected, onPress, role = 'radio', style }: { label: string; selected: boolean; onPress: () => void; role?: 'radio' | 'checkbox'; style?: StyleProp<ViewStyle> }) {
+  return (
+    <PressableScale
+      accessibilityRole={role}
+      accessibilityState={role === 'radio' ? { selected } : { checked: selected }}
+      feedback="select"
+      onPress={onPress}
+      style={[styles.chip, selected && { backgroundColor: colors.ink }, style]}
+    >
+      <Text style={[type.label, { fontSize: 15, color: selected ? colors.paper : colors.ink }]}>{label}</Text>
+    </PressableScale>
+  );
+}
+
+/** One choice from a short list, as a row of pills. */
+export function Segmented<T extends string | number>({ options, value, onChange }: { options: { value: T; label: string }[]; value: T | undefined; onChange: (v: T) => void }) {
+  return (
+    <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: space.s }}>
+      {options.map((o) => (
+        <Chip key={String(o.value)} label={o.label} selected={value === o.value} onPress={() => onChange(o.value)} style={{ flex: 1 }} />
+      ))}
     </View>
   );
 }
@@ -98,8 +204,9 @@ export function CoachBubble({ children, mood }: { children: ReactNode; mood?: Mo
 export const MIN_DAYS = 2;
 export const MAX_DAYS = 4;
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-/** Seven weekday checkboxes (0 = Monday … 6 = Sunday). Picking is capped at MAX_DAYS. */
+/** Seven round day toggles (0 = Monday … 6 = Sunday). Picking is capped at MAX_DAYS. */
 export function WeekdayChips({ selected, onChange }: { selected: number[]; onChange: (days: number[]) => void }) {
   const toggle = (d: number) => {
     const on = selected.includes(d);
@@ -107,91 +214,81 @@ export function WeekdayChips({ selected, onChange }: { selected: number[]; onCha
     onChange((on ? selected.filter((x) => x !== d) : [...selected, d]).sort());
   };
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+    <View style={{ flexDirection: 'row', gap: 6 }}>
       {WEEKDAYS.map((label, d) => {
         const on = selected.includes(d);
         return (
-          <Pressable
+          <PressableScale
             key={label}
             accessibilityRole="checkbox"
+            accessibilityLabel={WEEKDAY_NAMES[d]}
             accessibilityState={{ checked: on }}
+            scaleTo={motion.scale.circle}
+            feedback="select"
             onPress={() => toggle(d)}
-            style={[s.option, { minWidth: 72, minHeight: 52, justifyContent: 'center', alignItems: 'center' }, on && s.optionOn]}
+            style={[styles.day, on && { backgroundColor: colors.ink }]}
           >
-            <Text style={{ fontFamily: fonts.bold, fontSize: 17, color: on ? colors.accent : colors.ink }}>{label}</Text>
-          </Pressable>
+            <Text style={[type.caption, { fontFamily: fonts.bold, color: on ? colors.paper : colors.ink }]}>{label}</Text>
+          </PressableScale>
         );
       })}
     </View>
   );
 }
 
-/** Body-area chips in a two-column grid. `multi` makes them checkboxes instead of radios. */
+/** Body-area chips. `multi` makes them checkboxes instead of radios. */
 export function AreaChips({ selected, onPress, multi }: { selected: Area[]; onPress: (a: Area) => void; multi?: boolean }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      {AREAS.map((a) => {
-        const on = selected.includes(a);
-        return (
-          <Pressable
-            key={a}
-            accessibilityRole={multi ? 'checkbox' : 'radio'}
-            accessibilityState={multi ? { checked: on } : { selected: on }}
-            onPress={() => onPress(a)}
-            style={[s.option, { width: '48%', justifyContent: 'center', minHeight: 52 }, on && s.optionOn]}
-          >
-            <Text style={{ fontFamily: fonts.bold, fontSize: 16, color: on ? colors.accent : colors.ink }}>{AREA_LABEL[a]}</Text>
-          </Pressable>
-        );
-      })}
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.s }}>
+      {AREAS.map((a) => (
+        <Chip key={a} label={AREA_LABEL[a]} role={multi ? 'checkbox' : 'radio'} selected={selected.includes(a)} onPress={() => onPress(a)} />
+      ))}
     </View>
   );
 }
 
-/** Back button + progress segments for the onboarding steps. */
+/** Back circle + a thin progress line that springs forward. */
 export function StepHeader({ step, total, onBack }: { step: number; total: number; onBack: () => void }) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = withSpring(step / total, motion.settle);
+  }, [step, total, progress]);
+  const fill = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
   return (
-    <View style={s.stepRow}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={onBack} style={s.back} hitSlop={8}>
-        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.ink} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-          <Path d="M15 5l-7 7 7 7" />
-        </Svg>
-      </Pressable>
-      <View style={s.segments} accessibilityLabel={`Step ${step} of ${total}`}>
-        {Array.from({ length: total }, (_, i) => (
-          <View key={i} style={[s.segment, { backgroundColor: i < step ? colors.accent : colors.disabled }]} />
-        ))}
+    <View style={styles.stepRow}>
+      <CircleButton icon="back" label="Go back" onPress={onBack} />
+      <View style={styles.track} accessibilityLabel={`Step ${step} of ${total}`}>
+        <Animated.View style={[styles.fill, fill]} />
       </View>
-      <Text style={s.meta}>
+      <Text style={type.caption}>
         {step} of {total}
       </Text>
     </View>
   );
 }
 
-export const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ground },
-  scroll: { padding: 20, gap: 14, flexGrow: 1 },
-  footer: { paddingHorizontal: 20, paddingBottom: 8, paddingTop: 8, gap: 10 },
-  title: { fontFamily: fonts.display, fontSize: 44, lineHeight: 42, textTransform: 'uppercase', color: colors.ink, marginTop: 8 },
-  body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 24, color: colors.body },
-  meta: { fontFamily: fonts.bold, fontSize: 13, color: colors.muted },
-  hint: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
-  card: { backgroundColor: colors.card, borderRadius: 18, borderWidth: 1, borderColor: colors.line },
-  coach: { flexDirection: 'row', gap: 12, padding: 14, alignItems: 'flex-start' },
-  coachText: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.body },
-  button: { minHeight: 56, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 22 },
-  primary: { backgroundColor: colors.accent },
-  ghost: { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.disabled },
-  disabled: { backgroundColor: colors.disabled, borderColor: colors.disabled },
-  buttonText: { fontFamily: fonts.bold, fontSize: 17, color: '#FFFFFF' },
-  option: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, padding: 16, borderRadius: 14, borderWidth: 2, borderColor: colors.line, backgroundColor: colors.card },
-  optionOn: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
-  optionLabel: { fontFamily: fonts.bold, fontSize: 17, color: colors.ink },
-  mark: { width: 24, height: 24, borderWidth: 2, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
-  markOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  back: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
-  segments: { flex: 1, flexDirection: 'row', gap: 5 },
-  segment: { flex: 1, height: 4, borderRadius: 2 },
+/** Capy speaking: a small head and a line of text. Not a card, so it reads like a voice. */
+export function CoachLine({ children, mood, dark }: { children: ReactNode; mood?: Mood; dark?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: space.m, alignItems: 'center' }}>
+      <CapyAvatar size={36} mood={mood} />
+      <Text style={[type.body, { flex: 1, fontSize: 15, lineHeight: 22, color: dark ? colors.onNight : colors.body }]}>{children}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  scroll: { paddingHorizontal: space.gutter, paddingTop: space.m, paddingBottom: space.xxl, gap: space.l, flexGrow: 1 },
+  footer: { paddingHorizontal: space.gutter, paddingTop: space.s, paddingBottom: space.s, gap: space.s },
+  button: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: space.s, paddingHorizontal: space.xl, overflow: 'hidden' },
+  field: { fontFamily: fonts.medium, fontSize: 17, color: colors.ink, minHeight: 56, paddingHorizontal: space.l, borderRadius: radius.field, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.paper },
+  option: { minHeight: 60, paddingHorizontal: space.xl, paddingVertical: space.l, borderRadius: 24, backgroundColor: colors.paper, justifyContent: 'center', overflow: 'hidden' },
+  group: { backgroundColor: colors.paper, borderRadius: radius.group, borderCurve: 'continuous', overflow: 'hidden' },
+  hairline: { height: StyleSheet.hairlineWidth, backgroundColor: colors.line, marginLeft: space.l },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.m, minHeight: 56, paddingHorizontal: space.l, paddingVertical: space.m },
+  chip: { minHeight: 44, paddingHorizontal: space.l, borderRadius: radius.pill, backgroundColor: colors.mist, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  day: { flex: 1, aspectRatio: 1, maxWidth: 52, borderRadius: radius.pill, backgroundColor: colors.paper, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  stepRow: { flexDirection: 'row', alignItems: 'center', gap: space.m },
+  track: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.mist, overflow: 'hidden' },
+  fill: { height: 4, borderRadius: 2, backgroundColor: colors.ink },
 });

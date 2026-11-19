@@ -2,9 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState } from 'react-native';
 import type { ProfileDraft } from '@/state/profile';
+import { DEMO_EXERCISES, DEMO_PLAN } from '@/lib/demo-fixture'; // DEMO-FIXTURE
+import { filterExercises } from '@/utils/allowlist';
 import { toDbEquipment } from '@/utils/equipment';
-import { fromLogRow } from '@/utils/progress';
-import type { LogEntry, PlanItem } from '@/utils/types';
+import { fromLogRow, fromSessionRow } from '@/utils/progress';
+import type { LogEntry, PlanItem, Session } from '@/utils/types';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY; // publishable (or legacy anon) key — public by design
@@ -65,6 +67,7 @@ const IMAGE_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/m
 
 /** The user's current plan. The server builds week 1 on first call, and next week once every day is logged. */
 export async function generatePlan(): Promise<SavedPlan> {
+  if (!supabase) return DEMO_PLAN; // DEMO-FIXTURE
   if (!supabase) throw new Error('Supabase is not configured');
   const { data, error } = await supabase.functions.invoke<SavedPlan>('generate-plan', { method: 'POST' });
   if (error || !data) throw error ?? new Error('No plan returned');
@@ -73,24 +76,48 @@ export async function generatePlan(): Promise<SavedPlan> {
 
 /** Saves one finished workout day. */
 export async function saveLogs(entries: Omit<LogEntry, 'loggedOn'>[]): Promise<LogEntry[]> {
+  if (!supabase) return entries.map((e) => ({ ...e, loggedOn: new Date().toLocaleDateString('en-CA') })); // DEMO-FIXTURE
+  if (!supabase) throw new Error('Supabase is not configured');
+  const rows = entries.map((e) => ({
+    plan_id: e.planId,
+    logged_on: new Date().toLocaleDateString('en-CA'), // the user's own date, not the server's UTC date
+    day: e.day,
+    exercise_id: e.exerciseId,
+    completed: e.completed,
+    difficulty: e.difficulty,
+    pain: e.pain,
+    pain_area: e.painArea,
+    sets: e.sets ?? null,
+  }));
+  let { data, error } = await supabase.from('workout_logs').insert(rows).select();
+  // The 2026-10-09 migration adds `sets`. Until it's deployed, save the workout without them rather than lose it.
+  if (error?.code === MISSING_COLUMN) ({ data, error } = await supabase.from('workout_logs').insert(rows.map(({ sets: _, ...r }) => r)).select());
+  if (error) throw error;
+  return (data ?? []).map(fromLogRow);
+}
+
+/** PostgREST: a column the request names isn't in the schema (a migration not deployed yet). */
+const MISSING_COLUMN = 'PGRST204';
+
+/** Saves how long a finished workout took. */
+export async function saveSession(planId: string, day: number, seconds: number): Promise<Session> {
+  if (!supabase) return { planId, day, seconds, loggedOn: new Date().toLocaleDateString('en-CA'), note: null }; // DEMO-FIXTURE
   if (!supabase) throw new Error('Supabase is not configured');
   const { data, error } = await supabase
-    .from('workout_logs')
-    .insert(
-      entries.map((e) => ({
-        plan_id: e.planId,
-        logged_on: new Date().toLocaleDateString('en-CA'), // the user's own date, not the server's UTC date
-        day: e.day,
-        exercise_id: e.exerciseId,
-        completed: e.completed,
-        difficulty: e.difficulty,
-        pain: e.pain,
-        pain_area: e.painArea,
-      })),
-    )
-    .select();
+    .from('workout_sessions')
+    .insert({ plan_id: planId, day, seconds, logged_on: new Date().toLocaleDateString('en-CA') })
+    .select()
+    .single();
   if (error) throw error;
-  return data.map(fromLogRow);
+  return fromSessionRow(data);
+}
+
+/** The note written on the completion screen. */
+export async function saveSessionNote(planId: string, day: number, note: string): Promise<void> {
+  if (!supabase) return; // DEMO-FIXTURE
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { error } = await supabase.from('workout_sessions').update({ note }).eq('plan_id', planId).eq('day', day);
+  if (error) throw error;
 }
 
 /** Deletes the account and everything saved for it, then clears the local session. */
@@ -102,6 +129,7 @@ export async function deleteAccount(): Promise<void> {
 }
 
 export async function fetchExercises(ids: string[]): Promise<Record<string, ExerciseDetail>> {
+  if (!supabase) return Object.fromEntries(ids.filter((i) => DEMO_EXERCISES[i]).map((i) => [i, DEMO_EXERCISES[i]])); // DEMO-FIXTURE
   if (!supabase || !ids.length) return {};
   const { data, error } = await supabase.from('exercises').select('id, name, equipment, primary_muscles, instructions, images').in('id', ids);
   if (error) throw error;
@@ -113,15 +141,45 @@ export async function fetchExercises(ids: string[]): Promise<Record<string, Exer
   );
 }
 
+const SWAP_CHOICES = 3;
+const SWAP_POOL = 60;
+
+/**
+ * Up to 3 moves that can stand in for `ex`: they share a primary muscle and pass the same safety filter
+ * the plan builder uses (your equipment, your protected areas). Never a move already in today's session.
+ */
+export async function fetchAlternatives(ex: ExerciseDetail, profile: Pick<ProfileDraft, 'place' | 'gear' | 'injuredAreas'>, exclude: string[]): Promise<ExerciseDetail[]> {
+  if (!supabase) return Object.values(DEMO_EXERCISES).filter((e) => e.id !== ex.id && !exclude.includes(e.id) && e.primaryMuscles.some((m) => ex.primaryMuscles.includes(m))).slice(0, 3); // DEMO-FIXTURE
+  if (!supabase) throw new Error('Supabase is not configured');
+  const { data, error } = await supabase
+    .from('exercises')
+    .select('id, name, level, equipment, primary_muscles, stress_areas, instructions, images')
+    .eq('category', 'strength')
+    .overlaps('primary_muscles', ex.primaryMuscles)
+    .limit(SWAP_POOL);
+  if (error) throw error;
+  const safe = filterExercises(
+    { equipment: toDbEquipment(profile.place, profile.gear), injuredAreas: profile.injuredAreas },
+    data.map((r) => ({ id: r.id, name: r.name, level: r.level, equipment: r.equipment, primaryMuscles: r.primary_muscles, stressAreas: r.stress_areas })),
+  );
+  const ok = new Set(safe.map((e) => e.id).filter((id) => id !== ex.id && !exclude.includes(id)));
+  return data
+    .filter((r) => ok.has(r.id))
+    .slice(0, SWAP_CHOICES)
+    .map((r) => ({ id: r.id, name: r.name, equipment: r.equipment, primaryMuscles: r.primary_muscles, instructions: r.instructions, images: r.images.map((i: string) => IMAGE_BASE + i) }));
+}
+
 /** On launch: the signed-in user's saved answers and latest plan, or null for a first run. */
-export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan: SavedPlan | null; logs: LogEntry[] } | null> {
+export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan: SavedPlan | null; logs: LogEntry[]; sessions: Session[] } | null> {
   if (!supabase) return null;
   const { data: session } = await supabase.auth.getSession();
   if (!session.session) return null;
-  const [{ data: p }, { data: plan }, { data: logs }] = await Promise.all([
+  const [{ data: p }, { data: plan }, { data: logs }, { data: sessions }] = await Promise.all([
     supabase.from('profiles').select('*').maybeSingle(),
     supabase.from('plans').select('*').order('week', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('workout_logs').select('*').order('created_at'),
+    // Empty (not an error) until the sessions migration is deployed.
+    supabase.from('workout_sessions').select('*').order('created_at'),
   ]);
   if (!p) return null;
   return {
@@ -141,6 +199,7 @@ export async function loadSaved(): Promise<{ draft: Partial<ProfileDraft>; plan:
     },
     plan: plan as SavedPlan | null,
     logs: (logs ?? []).map(fromLogRow),
+    sessions: (sessions ?? []).map(fromSessionRow),
   };
 }
 

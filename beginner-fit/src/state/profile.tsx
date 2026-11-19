@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { fetchExercises, loadSaved, type ExerciseDetail, type SavedPlan } from '@/lib/supabase';
 import type { Gear, Place } from '@/utils/equipment';
 import type { ScreeningAnswers } from '@/utils/screening';
-import type { Area, LogEntry, Profile } from '@/utils/types';
+import type { Area, LogEntry, Profile, Session } from '@/utils/types';
 
 export type ProfileDraft = {
   goal?: Profile['goal'];
@@ -43,9 +43,14 @@ type Ctx = {
   plan: SavedPlan | null;
   exercises: Record<string, ExerciseDetail>;
   setPlan: (plan: SavedPlan) => Promise<void>;
+  /** Adds exercise details fetched elsewhere (e.g. a swapped-in move). */
+  addExercises: (more: Record<string, ExerciseDetail>) => void;
   /** Every logged move, oldest first. */
   logs: LogEntry[];
   addLogs: (logs: LogEntry[]) => void;
+  /** Every finished workout's duration and note, oldest first. */
+  sessions: Session[];
+  addSession: (session: Session) => void;
   /** Re-reads the signed-in account (after signing in on a new phone). False if it never finished onboarding. */
   reload: () => Promise<boolean>;
 };
@@ -56,11 +61,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState(START);
   const [plan, setPlanState] = useState<SavedPlan | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [exercises, setExercises] = useState<Record<string, ExerciseDetail>>({});
   const update = (patch: Partial<ProfileDraft>) => setDraft((d) => ({ ...d, ...patch }));
 
-  const setPlan = async (p: SavedPlan) => {
-    setExercises(await fetchExercises([...new Set(p.days.flat().map((i) => i.exerciseId))]));
+  // History cards need the logged moves' names and photos too, not just this week's.
+  const setPlan = async (p: SavedPlan, logged: LogEntry[] = logs) => {
+    const ids = [...p.days.flat().map((i) => i.exerciseId), ...logged.map((l) => l.exerciseId)];
+    const fetched = await fetchExercises([...new Set(ids)]);
+    setExercises((prev) => ({ ...prev, ...fetched }));
     setPlanState(p);
   };
 
@@ -68,7 +77,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (!saved) return false;
     update(saved.draft);
     setLogs(saved.logs);
-    if (saved.plan) await setPlan(saved.plan);
+    setSessions(saved.sessions);
+    if (saved.plan) await setPlan(saved.plan, saved.logs);
     return true;
   };
   const reload = async () => apply(await loadSaved());
@@ -82,7 +92,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ ready, draft, update, reset: () => { setDraft(START); setPlanState(null); setLogs([]); }, plan, exercises, setPlan, logs, addLogs: (l) => setLogs((prev) => [...prev, ...l]), reload }}>{children}</ProfileContext.Provider>
+    <ProfileContext.Provider value={{ ready, draft, update, reset: () => { setDraft(START); setPlanState(null); setLogs([]); setSessions([]); }, plan, exercises, setPlan, addExercises: (more) => setExercises((prev) => ({ ...prev, ...more })), logs, addLogs: (l) => setLogs((prev) => [...prev, ...l]), sessions, addSession: (x) => setSessions((prev) => [...prev, x]), reload }}>{children}</ProfileContext.Provider>
   );
 }
 

@@ -1,20 +1,24 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
+import { useNotify } from '@/components/notify';
 import { ScheduleCard } from '@/components/reminders';
-import { Body, Button, Field, Screen, Title, fail, s } from '@/components/ui';
+import { Body, Button, Card, Field, Screen, Segmented, Tag, fail } from '@/components/ui';
 import { accountEmail, confirmEmail, deleteAccount, linkEmail, setDisplayName, signOut } from '@/lib/supabase';
 import { resyncReminders } from '@/lib/reminders';
 import { useProfile } from '@/state/profile';
-import { colors, fonts } from '@/theme';
+import { useWorkout } from '@/state/workout';
+import { space, type } from '@/theme';
 
 function Section({ title }: { title: string }) {
   return (
-    <Text accessibilityRole="header" style={[s.meta, { marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.6 }]}>
-      {title}
-    </Text>
+    <View accessibilityRole="header" style={{ marginTop: space.m }}>
+      <Tag>{title}</Tag>
+    </View>
   );
 }
+
+const card = { padding: space.l, gap: space.m };
 
 /** Opened from the gear on Profile. Training setup, account and security, and deleting data. */
 export default function Settings() {
@@ -25,9 +29,9 @@ export default function Settings() {
 
   return (
     <Screen>
-      <Title>Settings</Title>
       <Section title="Training" />
       <ScheduleCard />
+      <UnitsCard />
       <Section title="Profile" />
       <NameCard />
       <Section title="Account & security" />
@@ -37,8 +41,26 @@ export default function Settings() {
   );
 }
 
+function UnitsCard() {
+  const { units, setUnits } = useWorkout();
+  return (
+    <Card style={card}>
+      <Text style={type.label}>Weights in</Text>
+      <Segmented
+        options={[
+          { value: 'kg', label: 'Kilograms' },
+          { value: 'lb', label: 'Pounds' },
+        ]}
+        value={units}
+        onChange={setUnits}
+      />
+    </Card>
+  );
+}
+
 function NameCard() {
   const { draft, update } = useProfile();
+  const notify = useNotify();
   const [name, setName] = useState(draft.displayName ?? '');
   const [busy, setBusy] = useState(false);
   const changed = name.trim() !== (draft.displayName ?? '') && name.trim().length > 0;
@@ -47,6 +69,7 @@ function NameCard() {
     try {
       await setDisplayName(name);
       update({ displayName: name.trim() });
+      notify({ title: 'Name saved', message: `Capy will call you ${name.trim()}` });
     } catch (e) {
       fail(e);
     } finally {
@@ -54,12 +77,14 @@ function NameCard() {
     }
   };
   return (
-    <View style={[s.card, { padding: 16, gap: 10 }]}>
-      <Text style={{ fontFamily: fonts.bold, fontSize: 16, color: colors.ink }}>Your name</Text>
-      <Body style={{ fontSize: 14, color: colors.muted }}>Capy and your buddy see this.</Body>
+    <Card style={card}>
+      <View style={{ gap: 2 }}>
+        <Text style={type.label}>Your name</Text>
+        <Text style={type.caption}>Capy and your buddy see this.</Text>
+      </View>
       <Field value={name} onChangeText={setName} placeholder="Your name" autoCapitalize="words" maxLength={30} />
       {changed ? <Button label={busy ? 'Saving…' : 'Save name'} disabled={busy} onPress={save} /> : null}
-    </View>
+    </Card>
   );
 }
 
@@ -80,8 +105,8 @@ function SaveProgress({ onSaved }: { onSaved: (email: string) => void }) {
     }
   };
   return (
-    <View style={[s.card, { padding: 16, gap: 10 }]}>
-      <Text style={{ fontFamily: fonts.bold, fontSize: 16, color: colors.ink }}>Save your progress</Text>
+    <Card style={card}>
+      <Text style={type.label}>Save your progress</Text>
       <Body>Add your email so a new phone doesn't mean starting over. No password.</Body>
       <Field value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoComplete="email" editable={!sent} />
       {sent ? (
@@ -110,7 +135,7 @@ function SaveProgress({ onSaved }: { onSaved: (email: string) => void }) {
           }
         />
       )}
-    </View>
+    </Card>
   );
 }
 
@@ -136,12 +161,12 @@ function SignedIn({ email }: { email: string }) {
       },
     ]);
   return (
-    <View style={[s.card, { padding: 16, gap: 10 }]}>
-      <Text style={{ fontFamily: fonts.bold, fontSize: 16, color: colors.ink }}>Email</Text>
+    <Card style={card}>
+      <Text style={type.label}>Email</Text>
       <Body>{email}</Body>
-      <Body style={{ fontSize: 14, color: colors.muted }}>Your progress is saved. On a new phone, choose "I already have an account".</Body>
-      <Button variant="ghost" label="Sign out" onPress={out} />
-    </View>
+      <Text style={type.caption}>Your progress is saved. On a new phone, choose "I already have an account".</Text>
+      <Button variant="secondary" label="Sign out" onPress={out} />
+    </Card>
   );
 }
 
@@ -169,5 +194,5 @@ function DeleteData() {
         },
       },
     ]);
-  return <Button variant="ghost" label={busy ? 'Deleting…' : 'Delete my data'} disabled={busy} onPress={confirm} />;
+  return <Button variant="text" label={busy ? 'Deleting…' : 'Delete my data'} disabled={busy} onPress={confirm} />;
 }

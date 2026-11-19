@@ -44,6 +44,9 @@ export const AREA_LABEL: Record<Area, string> = {
   ankle: 'Ankle',
 };
 
+/** One set as the workout screen records it. Weight is always stored in kg. */
+export type SetLog = { reps: number; weightKg: number | null; done: boolean };
+
 /** One logged move as stored (workout_logs row, camelCased). */
 export type LogEntry = {
   planId: string;
@@ -54,4 +57,9 @@ export type LogEntry = {
   difficulty: Difficulty | null; // null when skipped
   pain: boolean;
   painArea: Area | null;
+  /** The move's sets; null for moves logged before sets existed. */
+  sets?: SetLog[] | null;
 };
+
+/** One finished workout (workout_sessions row, camelCased): how long it took and an optional note. */
+export type Session = { planId: string; day: number; loggedOn: string; seconds: number; note: string | null };

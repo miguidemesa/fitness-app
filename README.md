@@ -8,7 +8,7 @@ A mobile app that gives complete beginners a safe, personal weekly workout plan.
 - **Health screening first** — seven questions based on the PAR-Q+ questionnaire. Fixed rules decide, never AI. Any answer that signals risk sends the user to a doctor before a plan is made, a skipped question counts as "yes", and the server checks again so a modified app can't skip it.
 - **Protects sore joints** — every exercise is tagged with the joints it stresses, and moves that load an area the user wants to protect are left out.
 - **AI-built plans with guardrails** — Claude arranges the week using only moves from a safety-filtered list of 367 exercises. The result is checked against rules (moves per day, sets, reps, days). If it fails twice, a rule-built plan is used instead.
-- **Workout logging** — one move at a time: did you do it, how did it feel, did anything hurt. Progress history shows every workout.
+- **Workout logging** — one move at a time: log each set (reps, and weight where the move uses it), rest between sets, then how it felt and whether anything hurt. Moves can be swapped for a safe alternative. The workout survives leaving the app. Every set, the session's length and an optional note are saved, so "last time" and new bests follow you to a new phone.
 - **How-to screens** — start and end photos and step-by-step instructions for every move.
 
 ## Tech stack

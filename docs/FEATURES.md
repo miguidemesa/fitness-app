@@ -120,7 +120,7 @@ Progress ends with **"Delete my data"**. After a confirmation, the account, plan
 
 ## Behind the scenes
 
-- **App:** Expo (React Native) for iPhone and Android, with the Capy look (sporty fonts, blue accent, Capy avatar).
+- **App:** Expo (React Native) for iPhone and Android, with the Capy look (Bricolage Grotesque + Figtree, one yuzu accent, a full-body Capy that reacts).
 - **Backend:** Supabase.
   - **Private by default:** each person can read and change only their own data. We checked this with two test users against the live project.
   - **Plans:** only the server can write plans; people can read their own but can't create or change them.

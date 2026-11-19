@@ -1,10 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Text } from 'react-native';
-import { Body, Button, Field, Screen, Title } from '@/components/ui';
+import { Body, Button, ErrorText, Field, Screen, Title } from '@/components/ui';
 import { sendSignInCode, verifySignInCode } from '@/lib/supabase';
 import { useProfile } from '@/state/profile';
-import { colors, fonts } from '@/theme';
 
 /** Sign in on a new phone with the email saved earlier. No password: a code arrives by email. */
 export default function SignIn() {
@@ -35,7 +33,7 @@ export default function SignIn() {
     try {
       await verifySignInCode(email, token);
       // An account that never finished onboarding picks up where it left off.
-      router.replace((await reload()) ? '/today' : '/onboarding/goal');
+      router.replace((await reload()) ? '/home' : '/onboarding/goal');
     } catch {
       setError("That code didn't work. Check it, or send a new one.");
       setBusy(false);
@@ -46,24 +44,20 @@ export default function SignIn() {
     <Screen
       footer={
         <>
-          {error ? (
-            <Text accessibilityRole="alert" style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.pain, textAlign: 'center' }}>
-              {error}
-            </Text>
-          ) : null}
+          <ErrorText>{error}</ErrorText>
           {sent ? (
             <>
               <Button label={busy ? 'Signing in…' : 'Sign in'} disabled={busy || token.trim().length < 6} onPress={confirm} />
-              <Button variant="ghost" label="Send a new code" disabled={busy} onPress={send} />
+              <Button variant="secondary" label="Send a new code" disabled={busy} onPress={send} />
             </>
           ) : (
             <Button label={busy ? 'Sending…' : 'Send me a code'} disabled={busy || !email.includes('@')} onPress={send} />
           )}
-          <Button variant="ghost" label="Back" onPress={() => router.back()} />
+          <Button variant="text" label="Back" onPress={() => router.back()} />
         </>
       }
     >
-      <Title>Welcome back</Title>
+      <Title style={{ marginTop: 24 }}>Welcome back</Title>
       <Body>Enter the email you saved your progress with. We'll send you a code, no password needed.</Body>
       <Field value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoComplete="email" editable={!sent} />
       {sent ? (

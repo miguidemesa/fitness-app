@@ -1,4 +1,4 @@
-import type { LogEntry, WorkoutLog } from './types.ts';
+import type { LogEntry, Session, SetLog, WorkoutLog } from './types.ts';
 
 type LogRow = {
   plan_id: string;
@@ -9,6 +9,7 @@ type LogRow = {
   difficulty: LogEntry['difficulty'];
   pain: boolean;
   pain_area: LogEntry['painArea'];
+  sets?: SetLog[] | null;
 };
 
 export const fromLogRow = (r: LogRow): LogEntry => ({
@@ -20,7 +21,12 @@ export const fromLogRow = (r: LogRow): LogEntry => ({
   difficulty: r.difficulty,
   pain: r.pain,
   painArea: r.pain_area,
+  sets: r.sets ?? null,
 });
+
+type SessionRow = { plan_id: string; day: number; logged_on: string; seconds: number; note: string | null };
+
+export const fromSessionRow = (r: SessionRow): Session => ({ planId: r.plan_id, day: r.day, loggedOn: r.logged_on, seconds: r.seconds, note: r.note });
 
 /** First day of the plan with nothing logged yet; null when the whole week is done. */
 export function nextDay(daysInPlan: number, planId: string, logs: LogEntry[]): number | null {

@@ -4,5 +4,5 @@ import { useProfile } from '@/state/profile';
 export default function Index() {
   const { ready, draft } = useProfile();
   if (!ready) return null;
-  return <Redirect href={draft.disclaimerAcceptedAt ? '/today' : '/onboarding'} />;
+  return <Redirect href={draft.disclaimerAcceptedAt ? '/home' : '/onboarding'} />;
 }
